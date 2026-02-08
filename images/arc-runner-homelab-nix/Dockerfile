@@ -43,6 +43,14 @@ RUN curl --proto '=https' --tlsv1.2 -sSf -L \
     nix-collect-garbage -d && \
     rm -rf /nix/var/nix/gcroots/auto/* ~/.cache/nix
 
+# Add Nix to PATH for all future commands and runtime
+ENV PATH="${HOME}/.nix-profile/bin:$PATH"
+
+# Remove xz-utils (only needed for Nix tar.xz extraction during install)
+USER root
+RUN apt-get purge -y --auto-remove xz-utils && rm -rf /var/lib/apt/lists/*
+USER runner
+
 ARG VERSION
 # OCI Metadata
 LABEL org.opencontainers.image.source="https://github.com/gillouche/container-factory"
