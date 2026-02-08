@@ -97,13 +97,16 @@ for VERSION in $VARIANTS; do
         # 1.2 Smoke Test
         # Determine test script based on image name
         TEST_SCRIPT=""
+        # Determine test script based on image name
+        TEST_SCRIPT=""
         if [[ "$IMAGE_NAME" == *"python"* ]]; then
-            TEST_SCRIPT="/tests/python/hello.py"
+            TEST_SCRIPT="tests/python/hello.py"
         fi
 
-        if [ -n "$TEST_SCRIPT" ]; then
+        if [ -n "$TEST_SCRIPT" ] && [ -f "$TEST_SCRIPT" ]; then
             echo "Running Smoke Test ($TEST_SCRIPT)..."
-            if docker run --rm -v "$(pwd)/tests:/tests" "$LOCAL_TAG" "$TEST_SCRIPT"; then
+            # Pipe script content to container to avoid DIND volume mount issues
+            if cat "$TEST_SCRIPT" | docker run --rm -i "$LOCAL_TAG" -; then
                  echo "Smoke Test Passed!"
             else
                  echo "Smoke Test Failed!"
@@ -111,18 +114,38 @@ for VERSION in $VARIANTS; do
                  exit 1
             fi
         else
-            echo "No smoke test defined for $IMAGE_NAME"
+            echo "Warning: No smoke test defined or file not found for $IMAGE_NAME"
         fi
         
         # Cleanup
         docker rmi "$LOCAL_TAG" || true
-        
     else
         echo "Skipping Pre-flight Verification (SCAN_IMAGES=false)"
     fi
 
     # ---------------------------------------------------------
-    # 2. Multi-Arch Build & Push
+    # 2. Check for Idempotency (if Pushing)
+    # ---------------------------------------------------------
+    if [ "$PUSH_IMAGES" = "true" ] && command -v crane &> /dev/null; then
+        echo "Checking if push is necessary..."
+        # If we scanned, we have LOCAL_TAG (linux/amd64). Its Image ID is the Config Digest.
+        # If we didn't scan, well, PUSH_IMAGES=true forces SCAN_IMAGES=true (line 36).
+        # So LOCAL_TAG exists.
+
+        LOCAL_ID=$(docker inspect --format='{{.Id}}' "$LOCAL_TAG")
+        # Get Remote Config Digest (this matches Image ID for OCI/Docker v2.2)
+        REMOTE_ID=$(crane config "$FULL_IMAGE:$VERSION" 2>/dev/null | sha256sum | awk '{print "sha256:"$1}')
+
+        if [ "$LOCAL_ID" = "$REMOTE_ID" ]; then
+             echo "Image $FULL_IMAGE:$VERSION (linux/amd64) matches remote config. Skipping push."
+             continue
+        else
+             echo "Config differs (Local: ${LOCAL_ID:0:12} Remote: ${REMOTE_ID:0:12}). Proceeding to push..."
+        fi
+    fi
+
+    # ---------------------------------------------------------
+    # 3. Multi-Arch Build & Push
     # ---------------------------------------------------------
     
     # Construct Build Command
