@@ -107,11 +107,11 @@ for VERSION in $VARIANTS; do
             fi
             
             echo "Analyzing scan results..."
-            # Export env vars for the script to use in Discord notifications
-            export IMAGE_NAME="$FULL_IMAGE"
-            export VERSION="$VERSION"
+            echo "Analyzing scan results..."
+            # Pass env vars for the script to use in Discord notifications
+            # Do NOT export them globally as it overwrites script variables like IMAGE_NAME
             
-            if ! python3 ci/check_scan_results.py "$TRIVY_JSON" "$IGNORE_FILE"; then
+            if ! IMAGE_NAME="$FULL_IMAGE" VERSION="$VERSION" python3 ci/check_scan_results.py "$TRIVY_JSON" "$IGNORE_FILE"; then
                 echo "Security check failed!"
                 docker rmi "$LOCAL_TAG" || true
                 exit 1

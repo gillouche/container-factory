@@ -138,7 +138,7 @@ def main():
             
             message = {
                 "username": "Trivy Scanner",
-                "content": f"🔒 **Security Update: {image_context}:{version_context}**\n\nThe following Trivy ignores are no longer detected and can be removed from `.trivyignore`:\n" + "\n".join([f"- `{item}`" for item in sorted_stale])
+                "content": f"\n**Security Update: {image_context}:{version_context}**\n\nThe following Trivy ignores are no longer detected and can be removed from `.trivyignore`:\n" + "\n".join([f"- `{item}`" for item in sorted_stale])
             }
             
             try:
