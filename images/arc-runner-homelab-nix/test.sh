@@ -24,7 +24,8 @@ NIX_VER=$(run_cmd "nix --version")
 echo "PASS: nix available ($NIX_VER)"
 
 # Test: nix flakes work
-SYSTEM=$(run_cmd "nix eval --raw --expr 'builtins.currentSystem'")
+# --impure is required to access builtins.currentSystem in pure eval mode
+SYSTEM=$(run_cmd "nix eval --impure --raw --expr 'builtins.currentSystem'")
 echo "PASS: nix flakes work (system=$SYSTEM)"
 
 # Test: git is available
