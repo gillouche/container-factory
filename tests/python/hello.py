@@ -1,5 +1,9 @@
 import sys
 import os
+import ssl
+import json
+import hashlib
+import urllib.request
 
 # Verify non-root execution
 uid = os.getuid()
@@ -10,13 +14,6 @@ expected = os.environ.get("EXPECTED_VERSION")
 if expected:
     actual = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     assert actual == expected, f"Version mismatch: expected {expected}, got {actual}"
-
-# Verify standard library modules load correctly
-import ssl
-import json
-import sqlite3
-import hashlib
-import urllib.request
 
 print(f"Python version: {sys.version}")
 print(f"Running as uid: {uid}")

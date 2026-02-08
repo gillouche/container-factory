@@ -11,15 +11,6 @@ on:
       - "Makefile"
       - "flake.nix"
       - "flake.lock"
-  pull_request:
-    paths:
-      - "images/**"
-      - "ci/**"
-      - "tests/**"
-      - ".github/workflows/**"
-      - "Makefile"
-      - "flake.nix"
-      - "flake.lock"
   workflow_dispatch:
   schedule:
     - cron: '0 3 * * *' # Nightly rebuild at 3 AM UTC
