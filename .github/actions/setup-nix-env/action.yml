@@ -1,0 +1,37 @@
+name: Setup Nix Environment
+description: Setup AWS credentials and install Nix with SeaweedFS cache
+
+runs:
+  using: composite
+  steps:
+    - name: Setup AWS Profile for Nix
+      shell: bash
+      run: |
+        # Create credentials for Runner User (for nix copy)
+        mkdir -p ~/.aws
+        echo "[nix]" > ~/.aws/credentials
+        echo "aws_access_key_id=$NIX_ACCESS_KEY_ID" >> ~/.aws/credentials
+        echo "aws_secret_access_key=$NIX_SECRET_ACCESS_KEY" >> ~/.aws/credentials
+
+        echo "[profile nix]" > ~/.aws/config
+        echo "region=us-east-1" >> ~/.aws/config
+
+        # Add default profile for general AWS SDK usage
+        echo "[default]" >> ~/.aws/credentials
+        echo "aws_access_key_id=$NIX_ACCESS_KEY_ID" >> ~/.aws/credentials
+        echo "aws_secret_access_key=$NIX_SECRET_ACCESS_KEY" >> ~/.aws/credentials
+        echo "[profile default]" >> ~/.aws/config
+        echo "region=us-east-1" >> ~/.aws/config
+
+        # Copy to Root (for Nix Daemon substitution)
+        sudo mkdir -p /root/.aws
+        sudo cp ~/.aws/credentials /root/.aws/credentials
+        sudo cp ~/.aws/config /root/.aws/config
+
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@main
+      with:
+        extra-conf: |
+          substituters = s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http https://cache.nixos.org/
+          trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          require-sigs = false
