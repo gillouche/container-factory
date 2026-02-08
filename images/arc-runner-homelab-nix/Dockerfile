@@ -27,9 +27,13 @@ USER runner
 # Single-user Nix installation (pinned version, TLS enforced)
 # Combined into single layer: install, configure, verify, and cleanup
 ARG NIX_VERSION=2.33.2
+# hadolint ignore=DL4006
+SHELL ["/bin/bash", "-c"]
+
 RUN curl --proto '=https' --tlsv1.2 -sSf -L \
     "https://releases.nixos.org/nix/nix-${NIX_VERSION}/install" \
     | sh -s -- --no-daemon && \
+    export PATH="${HOME}/.nix-profile/bin:$PATH" && \
     mkdir -p "${HOME}/.config/nix" && printf '%s\n' \
     'experimental-features = nix-command flakes' \
     'sandbox = false' \
@@ -38,10 +42,11 @@ RUN curl --proto '=https' --tlsv1.2 -sSf -L \
     'trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
     'require-sigs = false' \
     > "${HOME}/.config/nix/nix.conf" && \
-    . "${HOME}/.nix-profile/etc/profile.d/nix.sh" && \
     nix --version && \
     nix-collect-garbage -d && \
-    rm -rf /nix/var/nix/gcroots/auto/* ~/.cache/nix
+    rm -rf /nix/var/nix/gcroots/auto/* ~/.cache/nix \
+
+SHELL ["/bin/sh", "-c"]
 
 # Add Nix to PATH for all future commands and runtime
 ENV PATH="${HOME}/.nix-profile/bin:$PATH"
