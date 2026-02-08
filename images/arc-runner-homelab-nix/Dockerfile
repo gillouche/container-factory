@@ -25,40 +25,27 @@ ENV HOME=/home/runner
 USER runner
 
 # Single-user Nix installation (pinned version, TLS enforced)
+# Combined into single layer: install, configure, verify, and cleanup
 ARG NIX_VERSION=2.33.2
 RUN curl --proto '=https' --tlsv1.2 -sSf -L \
     "https://releases.nixos.org/nix/nix-${NIX_VERSION}/install" \
-    | sh -s -- --no-daemon
-
-# Add Nix to PATH for all future commands
-ENV PATH="${HOME}/.nix-profile/bin:$PATH"
-
-# Remove xz-utils — only needed for Nix tar.xz extraction during install
-USER root
-RUN apt-get purge -y --auto-remove xz-utils && rm -rf /var/lib/apt/lists/*
-USER runner
-
-# Configure Nix with baked-in SeaweedFS cache for faster first nix develop
-# sandbox=false: required inside containers (no nested namespaces)
-# filter-syscalls=false: required for QEMU-emulated multi-arch builds
-#   (Nix seccomp BPF filter fails under QEMU aarch64 emulation, see NixOS/nix#5258)
-# substituters: SeaweedFS S3 cache tried first, then official cache as fallback
-# require-sigs=false: SeaweedFS cache uses unsigned narinfo
-RUN mkdir -p "${HOME}/.config/nix" && printf '%s\n' \
+    | sh -s -- --no-daemon && \
+    mkdir -p "${HOME}/.config/nix" && printf '%s\n' \
     'experimental-features = nix-command flakes' \
     'sandbox = false' \
     'filter-syscalls = false' \
     'substituters = s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http https://cache.nixos.org/' \
     'trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
     'require-sigs = false' \
-    > "${HOME}/.config/nix/nix.conf"
-
-# Verify Nix installation
-RUN nix --version
+    > "${HOME}/.config/nix/nix.conf" && \
+    . "${HOME}/.nix-profile/etc/profile.d/nix.sh" && \
+    nix --version && \
+    nix-collect-garbage -d && \
+    rm -rf /nix/var/nix/gcroots/auto/* ~/.cache/nix
 
 ARG VERSION
 # OCI Metadata
 LABEL org.opencontainers.image.source="https://github.com/gillouche/container-factory"
-LABEL org.opencontainers.image.description="GitHub Actions Runner with Nix"
+LABEL org.opencontainers.image.description="GitHub Actions Runner with Nix and homelab cache config"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.version="${VERSION}"
