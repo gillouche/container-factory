@@ -7,10 +7,13 @@ on:
       - "images/**"
       - "ci/**"
   workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *' # Nightly rebuild at 3 AM UTC
 
 jobs:
   build:
     name: Build Images
+    if: github.repository_owner == 'gillouche'
     runs-on: container-factory-runner # Using the runner with DIND sidecar
     steps:
       - name: Checkout
@@ -29,8 +32,14 @@ jobs:
           driver: docker-container # Required for multi-arch
           endpoint: unix:///var/run/docker.sock
 
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
       - name: Build All Images
         run: make build-all
         env:
           NEXUS_REGISTRY: nexus.gillouche.homelab
           NEXUS_NAMESPACE: docker-hosted
+          # Push only on main branch or scheduled builds
+          PUSH_IMAGES: ${{ github.ref == 'refs/heads/main' || github.event_name == 'schedule' }}

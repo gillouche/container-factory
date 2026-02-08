@@ -1,0 +1,23 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:base",
+        ":prHourlyLimitNone",
+        ":prConcurrentLimitNone",
+        "docker:pinDigests"
+    ],
+    "docker": {
+        "pinDigests": true
+    },
+    "packageRules": [
+        {
+            "matchUpdateTypes": [
+                "minor",
+                "patch",
+                "pin",
+                "digest"
+            ],
+            "automerge": true
+        }
+    ]
+}

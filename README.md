@@ -8,7 +8,13 @@ A central monorepo for building hardened, security-scanned Docker images for the
 - **Strategy**: 
     - **Multi-Arch**: AMD64 + ARM64.
     - **Distroless**: Uses "Donor" pattern to transplant specific app versions into `distroless/base`.
-    - **Security**: Trivy strict scanning (fails on Critical).
+## Development Environment
+This project includes a Nix flake for a reproducible development environment.
+
+To use it:
+1.  **Install Nix**: ensure you have Nix installed.
+2.  **Direnv**: `direnv allow .` (this will automatically load `trivy`, `gnumake`, and `docker-buildx`).
+3.  **Manual**: `nix develop` (if you don't use direnv).
 
 ## Usage
 Build a specific image:
