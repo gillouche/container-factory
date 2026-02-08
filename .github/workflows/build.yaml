@@ -22,7 +22,7 @@ concurrency:
 jobs:
   prepare:
     name: Prepare Environment
-    runs-on: container-factory-runner # Required for internal network/cache access
+    runs-on: container-factory-runner
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -50,7 +50,7 @@ jobs:
   build:
     name: Build ${{ matrix.image }}:${{ matrix.version }}
     needs: prepare
-    runs-on: container-factory-runner # Using the runner with DIND sidecar
+    runs-on: container-factory-runner
     timeout-minutes: 30
     concurrency:
       group: build-${{ matrix.image }}-${{ matrix.version }}-${{ github.ref }}
