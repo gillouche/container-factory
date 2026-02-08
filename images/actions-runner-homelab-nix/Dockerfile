@@ -6,6 +6,10 @@ FROM ghcr.io/actions/actions-runner:${VERSION}@sha256:dced476aa42703ebd9aafc295c
 # Switch to root to configure Nix
 USER root
 
+# Install xz (needed by Nix installer, not present in upstream image)
+# TODO: Remove this once we actions-runner is pushed to nexus.gillouche.homelab/docker-hosted/base/actions-runner
+RUN apt-get update && apt-get install -y --no-install-recommends xz-utils && rm -rf /var/lib/apt/lists/*
+
 # Create /nix directory and give ownership to runner
 RUN mkdir -m 0755 /nix && chown runner:runner /nix
 
