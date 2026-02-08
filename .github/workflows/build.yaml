@@ -6,6 +6,11 @@ on:
     paths:
       - "images/**"
       - "ci/**"
+      - ".github/workflows/**"
+      - "Makefile"
+      - "flake.nix"
+      - "flake.lock"
+      - "flake.lock"
   workflow_dispatch:
   schedule:
     - cron: '0 3 * * *' # Nightly rebuild at 3 AM UTC
