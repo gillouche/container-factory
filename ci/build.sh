@@ -2,6 +2,7 @@
 set -euo pipefail
 
 IMAGE_NAME=$1
+TARGET_VERSION=${2:-}
 REGISTRY=${NEXUS_REGISTRY:-nexus.gillouche.homelab}
 NAMESPACE=${NEXUS_NAMESPACE:-docker-hosted}
 
@@ -39,6 +40,11 @@ fi
 
 # Determine the highest version for the "latest" tag (semver sort)
 LATEST_VERSION=$(echo "$VARIANTS" | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
+
+# Override if specific version targeted
+if [ -n "$TARGET_VERSION" ]; then
+    VARIANTS="$TARGET_VERSION"
+fi
 
 # Build Loop
 for VERSION in $VARIANTS; do

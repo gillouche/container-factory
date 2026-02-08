@@ -16,10 +16,39 @@ on:
     - cron: '0 3 * * *' # Nightly rebuild at 3 AM UTC
 
 jobs:
+  prepare:
+    name: Prepare Environment
+    runs-on: container-factory-runner # Required for internal network/cache access
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Nix Environment
+        uses: ./.github/actions/setup-nix-env
+
+      - name: Push Dev Environment to Nix Cache
+        run: |
+          echo "Pre-caching development environment..."
+          export AWS_ACCESS_KEY_ID=$NIX_ACCESS_KEY_ID
+          export AWS_SECRET_ACCESS_KEY=$NIX_SECRET_ACCESS_KEY
+          # Copy flake dev shell dependencies to cache
+          nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" ./#default
+
+      - name: Generate Build Matrix
+        id: set-matrix
+        run: |
+          MATRIX=$(python3 ci/generate-matrix.py)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
   build:
-    name: Build Images
-    if: github.repository_owner == 'gillouche'
+    name: Build ${{ matrix.image }}:${{ matrix.version }}
+    needs: prepare
     runs-on: container-factory-runner # Using the runner with DIND sidecar
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
     permissions:
       contents: read
       id-token: write # Required for cosign keyless signing
@@ -41,22 +70,15 @@ jobs:
       - name: Setup Nix Environment
         uses: ./.github/actions/setup-nix-env
 
-      - name: Build All Images
+      - name: Build and Push
         run: |
           nix develop \
             --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
             --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./#default --command make build-all
+            ./#default --command ./ci/build.sh "${{ matrix.image }}" "${{ matrix.version }}"
         env:
           NEXUS_REGISTRY: nexus.gillouche.homelab
           NEXUS_NAMESPACE: docker-hosted
           # Push only on main branch or scheduled builds
           PUSH_IMAGES: ${{ github.ref == 'refs/heads/main' || github.event_name == 'schedule' }}
           SCAN_IMAGES: "true"
-
-      - name: Push to Nix Cache
-        run: |
-          echo "Pushing build artifacts to Nix Cache..."
-          export AWS_ACCESS_KEY_ID=$NIX_ACCESS_KEY_ID
-          export AWS_SECRET_ACCESS_KEY=$NIX_SECRET_ACCESS_KEY
-          nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" ./#default
