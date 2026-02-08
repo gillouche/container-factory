@@ -41,7 +41,7 @@ jobs:
           export AWS_ACCESS_KEY_ID=$NIX_ACCESS_KEY_ID
           export AWS_SECRET_ACCESS_KEY=$NIX_SECRET_ACCESS_KEY
           # Copy flake dev shell dependencies to cache
-          nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" ./#default
+          nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" .#devShells.x86_64-linux.default
 
       - name: Generate Build Matrix
         id: set-matrix
