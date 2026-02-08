@@ -125,8 +125,33 @@ def main():
     
     if stale_ignores:
         print("\n[STALE IGNORES] The following ignores are no longer detected and can be removed:")
-        for item in sorted(stale_ignores):
+        sorted_stale = sorted(stale_ignores)
+        for item in sorted_stale:
             print(f"  - {item}")
+            
+        # Send Discord Notification if configured
+        webhook_url = os.environ.get("SECURITY_NOTIFICATIONS_DISCORD")
+        if webhook_url:
+            print("Sending Discord notification for stale ignores...")
+            image_context = os.environ.get("IMAGE_NAME", "Unknown Image")
+            version_context = os.environ.get("VERSION", "Unknown Version")
+            
+            message = {
+                "username": "Trivy Scanner",
+                "content": f"🔒 **Security Update: {image_context}:{version_context}**\n\nThe following Trivy ignores are no longer detected and can be removed from `.trivyignore`:\n" + "\n".join([f"- `{item}`" for item in sorted_stale])
+            }
+            
+            try:
+                import urllib.request
+                req = urllib.request.Request(
+                    webhook_url, 
+                    data=json.dumps(message).encode('utf-8'),
+                    headers={'Content-Type': 'application/json', 'User-Agent': 'Trivy-Check-Script'}
+                )
+                with urllib.request.urlopen(req) as response:
+                    print(f"Notification sent: {response.status} {response.reason}")
+            except Exception as e:
+                print(f"Failed to send Discord notification: {e}")
     
     # Exit 1 if unignored findings exist
     if unignored_findings:

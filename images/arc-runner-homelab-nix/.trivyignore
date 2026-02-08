@@ -57,3 +57,8 @@ GHSA-9g55-pg62-m8hh # crossbeam-channel (Data leak)
 GHSA-wgrg-5h56-jg27 # nix (Out-of-bounds write)
 CVE-2026-23519  # cmov (Side-channel)
 CVE-2025-11695  # mongodb (Certificate validation bypass)
+
+# -----------------
+# Testing
+# -----------------
+CVE-2000-0000 # Dummy CVE to test Stale Ignore Discord Notification

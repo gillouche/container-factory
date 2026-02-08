@@ -35,8 +35,9 @@ jobs:
       - name: Push Dev Environment to Nix Cache
         run: |
           echo "Pre-caching development environment..."
-          export AWS_ACCESS_KEY_ID=$NIX_ACCESS_KEY_ID
-          export AWS_SECRET_ACCESS_KEY=$NIX_SECRET_ACCESS_KEY
+          # Credentials are provided by the runner environment
+          # export AWS_ACCESS_KEY_ID=$NIX_ACCESS_KEY_ID
+          # export AWS_SECRET_ACCESS_KEY=$NIX_SECRET_ACCESS_KEY
           # Copy flake dev shell dependencies to cache
           nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" .#devShells.x86_64-linux.default
 
@@ -87,6 +88,6 @@ jobs:
         env:
           NEXUS_REGISTRY: nexus.gillouche.homelab
           NEXUS_NAMESPACE: docker-hosted
-          # Push only on main branch push or scheduled builds (not PRs or feature branches)
           PUSH_IMAGES: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'schedule' }}
-          SCAN_IMAGES: "true"
+          SCAN_IMAGES: true
+          SECURITY_NOTIFICATIONS_DISCORD: ${{ secrets.SECURITY_NOTIFICATIONS_DISCORD }}
