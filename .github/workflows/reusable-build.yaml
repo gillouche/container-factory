@@ -1,0 +1,86 @@
+name: Build Image Reusable
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      push:
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build-single:
+    name: Build ${{ inputs.image }}:${{ inputs.version }}
+    runs-on: container-factory-runner
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Load Runner Secrets
+        run: |
+          echo "DISCORD_WEBHOOK_GITHUB_ACTIONS=$DISCORD_WEBHOOK_GITHUB_ACTIONS" >> $GITHUB_ENV
+          echo "DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS=$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" >> $GITHUB_ENV
+          echo "NEXUS_USERNAME=$NEXUS_USERNAME" >> $GITHUB_ENV
+          echo "NEXUS_PASSWORD=$NEXUS_PASSWORD" >> $GITHUB_ENV
+
+      - name: Login to Nexus
+        run: echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        with:
+          driver: docker-container
+          endpoint: unix:///var/run/docker.sock
+
+      - name: Setup Nix Environment
+        uses: ./.github/actions/setup-nix-env
+
+      - name: Send Start Notification
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          webhook: ${{ env.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
+          status: info
+          title: CI Pipeline
+          message: "Build started for ${{ inputs.image }}:${{ inputs.version }} (commit ${{ github.sha }})"
+
+      - name: Build and Push
+        run: |
+          nix develop \
+            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
+            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
+            ./#default --command ./ci/build.sh "${{ inputs.image }}" "${{ inputs.version }}"
+        env:
+          NEXUS_REGISTRY: nexus.gillouche.homelab
+          NEXUS_NAMESPACE: docker-hosted
+          PUSH_IMAGES: ${{ inputs.push }}
+          SCAN_IMAGES: true
+          # Webhooks are picked up from env by the script if exported or passed explicitly?
+          # ci/build.sh line 114: DISCORD_WEBHOOK="$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" ...
+          # So we need them in env. We set them in "Load Runner Secrets".
+
+      - name: Send Success Notification
+        if: success()
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          webhook: ${{ env.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
+          status: success
+          title: CI Pipeline
+          message: "Build completed successfully for ${{ inputs.image }}:${{ inputs.version }}"
+
+      - name: Send Failure Notification
+        if: failure()
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          webhook: ${{ env.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
+          status: failure
+          title: CI Pipeline
+          message: "Build failed for ${{ inputs.image }}:${{ inputs.version }}"

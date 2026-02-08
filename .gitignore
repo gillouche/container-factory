@@ -1,0 +1,16 @@
+.direnv/
+tasks.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.envrc
+**/__pycache__
+trivy-results.json

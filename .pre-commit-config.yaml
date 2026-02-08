@@ -1,0 +1,13 @@
+repos:
+  - repo: local
+    hooks:
+      - id: hadolint
+        name: Lint Dockerfiles
+        entry: hadolint
+        language: system
+        types: [dockerfile]
+      - id: shellcheck
+        name: Lint Shell Scripts
+        entry: shellcheck
+        language: system
+        types: [shell]

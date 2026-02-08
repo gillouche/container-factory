@@ -1,0 +1,62 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended",
+        ":prHourlyLimitNone",
+        ":prConcurrentLimitNone",
+        "docker:pinDigests"
+    ],
+    "platformAutomerge": true,
+    "docker": {
+        "pinDigests": true
+    },
+    "packageRules": [
+        {
+            "matchUpdateTypes": [
+                "minor",
+                "patch",
+                "pin",
+                "digest"
+            ],
+            "automerge": true
+        }
+    ],
+    "customManagers": [
+        {
+            "customType": "regex",
+            "fileMatch": [
+                "images/python-distroless/VARIANTS"
+            ],
+            "matchStrings": [
+                "(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+            ],
+            "datasourceTemplate": "docker",
+            "depNameTemplate": "python",
+            "versioningTemplate": "docker"
+        },
+        {
+            "customType": "regex",
+            "fileMatch": [
+                "images/actions-runner/VARIANTS"
+            ],
+            "matchStrings": [
+                "(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+            ],
+            "datasourceTemplate": "github-releases",
+            "depNameTemplate": "actions/runner",
+            "extractVersionTemplate": "^v(?<version>.*)$"
+        },
+        {
+            "customType": "regex",
+            "fileMatch": [
+                "images/actions-runner-homelab-nix/VARIANTS"
+            ],
+            "matchStrings": [
+                "(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+            ],
+            "datasourceTemplate": "docker",
+            "depNameTemplate": "ghcr.io/actions/actions-runner",
+            "versioningTemplate": "docker"
+        }
+    ]
+}

@@ -1,0 +1,59 @@
+# =========================================================================================================
+# Trivy Ignore Configuration for ARC Runner
+# Goal: Suppress false positives and unfixable upstream vulnerabilities in the base image.
+# =========================================================================================================
+
+# -----------------
+# Secrets (False Positives)
+# -----------------
+# These are test keys and patches embedded in the Nix installer/store, not real runtime secrets.
+**/ssh_host_ed25519_key
+**/*.pem
+**/*.patch
+
+# -----------------
+# Base Image Vulnerabilities (ghcr.io/actions/actions-runner)
+# -----------------
+# These vulnerabilities are baked into the upstream runner image. We cannot fix them without patching
+# the runner itself or waiting for GitHub to release a new image.
+
+# Node.js Libraries (used by runner)
+CVE-2026-25547  # @isaacs/brace-expansion (Denial of Service)
+CVE-2024-21538  # cross-spawn (ReDoS)
+CVE-2025-64756  # glob (Command Injection)
+CVE-2026-23745  # tar (Arbitrary file overwrite/symlink poisoning)
+CVE-2026-23950  # tar (Arbitrary file overwrite)
+CVE-2026-24842  # tar (Path traversal)
+
+# Container Runtime & Docker (bundled in runner)
+# These affect runc, containerd (CVE-2025-52881 escape), and golang stdlib issues.
+CVE-2025-52881  # opencontainers/selinux (Container escape/DoS)
+CVE-2025-61726  # golang net/url (Memory exhaustion)
+CVE-2025-61728  # golang archive/zip (Excessive CPU)
+CVE-2025-61729  # golang crypto/x509 (DoS)
+CVE-2025-61730  # golang crypto/tls (DoS)
+CVE-2025-68121  # golang crypto/tls (DoS)
+
+# -----------------
+# Nix Installer Bundled Tools (Rust/Go dependencies in /nix/store)
+# -----------------
+# These come from the Nix installer binary blob. We upgraded Nix to 2.33.2 to attempt a fix,
+# but retain ignores for known issues in case they persist. These are build-time tools usually not exploitable at runtime.
+
+# Rust Crates (xcb, crossbeam, etc.)
+CVE-2021-26955  # xcb (Use-after-free)
+CVE-2021-26956  # xcb (Use-after-free)
+CVE-2021-26957  # xcb (Use-after-free)
+CVE-2021-26958  # xcb (Use-after-free)
+CVE-2018-20993  # yaml-rust (DoS recursion)
+CVE-2024-27308  # mio (rpm-ostree specific)
+GHSA-8qv2-5vq6-g2g7 # webpki (DoS)
+CVE-2021-32810  # crossbeam-deque (Double free)
+CVE-2022-23639  # crossbeam-utils (Use-after-free/race)
+GHSA-rvr2-r3pv-5m4p # oneshot (Use-after-free)
+CVE-2024-32650  # rustls (DoS)
+CVE-2022-24713  # regex (ReDoS)
+GHSA-9g55-pg62-m8hh # crossbeam-channel (Data leak)
+GHSA-wgrg-5h56-jg27 # nix (Out-of-bounds write)
+CVE-2026-23519  # cmov (Side-channel)
+CVE-2025-11695  # mongodb (Certificate validation bypass)

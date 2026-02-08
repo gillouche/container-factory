@@ -1,0 +1,91 @@
+name: Build & Publish
+
+on:
+  push:
+    branches: [ "**" ]
+    paths:
+      - "images/**"
+      - "ci/**"
+      - "tests/**"
+      - ".github/workflows/**"
+      - "Makefile"
+      - "flake.nix"
+      - "flake.lock"
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *' # Nightly rebuild at 3 AM UTC
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Prepare Matrices
+    runs-on: container-factory-runner
+    outputs:
+      matrix-l1: ${{ steps.set-matrix-l1.outputs.matrix }}
+      matrix-l2: ${{ steps.set-matrix-l2.outputs.matrix }}
+      push: ${{ steps.set-push.outputs.push }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Nix Environment
+        uses: ./.github/actions/setup-nix-env
+
+      - name: Push Dev Environment to Nix Cache
+        run: |
+          echo "Pre-caching development environment..."
+          nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" .#devShells.x86_64-linux.default
+
+      - name: Generate Matrix Level 1
+        id: set-matrix-l1
+        run: |
+          MATRIX=$(python3 ci/generate_matrix.py --level 1)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Matrix Level 2
+        id: set-matrix-l2
+        run: |
+          MATRIX=$(python3 ci/generate_matrix.py --level 2)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+      
+      - name: Determine Push Policy
+        id: set-push
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "push=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "push=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-level-1:
+    name: Build L1
+    needs: prepare
+    if: fromJson(needs.prepare.outputs.matrix-l1).include[0] != null
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix-l1) }}
+    uses: ./.github/workflows/reusable-build.yaml
+    with:
+      image: ${{ matrix.image }}
+      version: ${{ matrix.version }}
+      push: ${{ needs.prepare.outputs.push == 'true' }}
+
+  build-level-2:
+    name: Build L2
+    needs: [prepare, build-level-1]
+    if: |
+      always() && 
+      (needs.build-level-1.result == 'success' || needs.build-level-1.result == 'skipped') && 
+      fromJson(needs.prepare.outputs.matrix-l2).include[0] != null
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix-l2) }}
+    uses: ./.github/workflows/reusable-build.yaml
+    with:
+      image: ${{ matrix.image }}
+      version: ${{ matrix.version }}
+      push: ${{ needs.prepare.outputs.push == 'true' }}
+

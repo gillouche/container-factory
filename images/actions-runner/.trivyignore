@@ -1,0 +1,33 @@
+# =========================================================================================================
+# Trivy Ignore Configuration for Actions Runner (Wolfi-based)
+# Goal: Suppress false positives and unfixable upstream vulnerabilities.
+# =========================================================================================================
+
+# -----------------
+# Node.js Bundled Libraries (nodejs-24 from Wolfi)
+# -----------------
+# These vulnerabilities are in npm packages bundled with Node.js. They are upstream issues
+# and will be fixed when Wolfi updates the nodejs package.
+
+# tar (node-tar) - Archive handling vulnerabilities
+CVE-2026-23745
+CVE-2026-23950
+CVE-2026-24842
+
+# brace-expansion - Pattern matching library
+CVE-2026-25547
+
+# cross-spawn - Cross-platform spawn utility
+CVE-2024-21538
+
+# glob - File matching library
+CVE-2025-64756
+
+# -----------------
+# Docker / Buildx Static Binaries (Go stdlib issues)
+# -----------------
+# These vulnerabilities are in the Go standard library used to build Docker and Buildx.
+# They will be fixed when upstream Docker releases new versions with updated Go.
+
+# crypto/tls - TLS session resumption DoS
+CVE-2025-68121
