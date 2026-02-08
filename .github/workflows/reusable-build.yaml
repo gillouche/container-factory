@@ -13,11 +13,6 @@ on:
         required: false
         type: boolean
         default: false
-    secrets:
-      NEXUS_USERNAME:
-        required: true
-      NEXUS_PASSWORD:
-        required: true
 
 jobs:
   build-single:
@@ -34,9 +29,11 @@ jobs:
         run: |
           echo "DISCORD_WEBHOOK_GITHUB_ACTIONS=$DISCORD_WEBHOOK_GITHUB_ACTIONS" >> $GITHUB_ENV
           echo "DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS=$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" >> $GITHUB_ENV
+          echo "NEXUS_USERNAME=$NEXUS_USERNAME" >> $GITHUB_ENV
+          echo "NEXUS_PASSWORD=$NEXUS_PASSWORD" >> $GITHUB_ENV
 
       - name: Login to Nexus
-        run: echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
+        run: echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
 
       - name: Setup Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3

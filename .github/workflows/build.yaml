@@ -72,9 +72,6 @@ jobs:
       image: ${{ matrix.image }}
       version: ${{ matrix.version }}
       push: ${{ needs.prepare.outputs.push == 'true' }}
-    secrets:
-      NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-      NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
 
   build-level-2:
     name: Build L2
@@ -91,6 +88,4 @@ jobs:
       image: ${{ matrix.image }}
       version: ${{ matrix.version }}
       push: ${{ needs.prepare.outputs.push == 'true' }}
-    secrets:
-      NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-      NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+
