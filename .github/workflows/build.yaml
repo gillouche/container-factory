@@ -15,28 +15,46 @@ jobs:
     name: Build Images
     if: github.repository_owner == 'gillouche'
     runs-on: container-factory-runner # Using the runner with DIND sidecar
+    permissions:
+      contents: read
+      id-token: write # Required for cosign keyless signing
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 1
 
       - name: Login to Nexus
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: nexus.gillouche.homelab
           username: ${{ secrets.NEXUS_USERNAME }}
           password: ${{ secrets.NEXUS_PASSWORD }}
 
       - name: Setup Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
         with:
           driver: docker-container # Required for multi-arch
           endpoint: unix:///var/run/docker.sock
 
       - name: Install Trivy
+        env:
+          TRIVY_VERSION: "0.69.1"
         run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) ARCH="64bit" ;;
+            aarch64|arm64) ARCH="ARM64" ;;
+            *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+          esac
+          curl -sfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-${ARCH}.tar.gz" -o trivy.tar.gz
+          tar xzf trivy.tar.gz trivy
+          mv trivy /usr/local/bin/
+          rm trivy.tar.gz
+          trivy --version
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
 
       - name: Build All Images
         run: make build-all
@@ -45,3 +63,5 @@ jobs:
           NEXUS_NAMESPACE: docker-hosted
           # Push only on main branch or scheduled builds
           PUSH_IMAGES: ${{ github.ref == 'refs/heads/main' || github.event_name == 'schedule' }}
+          # Scan and test always
+          SCAN_IMAGES: "true"

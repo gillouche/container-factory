@@ -37,6 +37,9 @@ if [ "$PUSH_IMAGES" = "true" ]; then
     SCAN_IMAGES="true"
 fi
 
+# Determine the highest version for the "latest" tag (semver sort)
+LATEST_VERSION=$(echo "$VARIANTS" | sort -t. -k1,1n -k2,2n -k3,3n | tail -1)
+
 # Build Loop
 for VERSION in $VARIANTS; do
     # User requested docker-hosted/base/ structure
@@ -127,11 +130,16 @@ for VERSION in $VARIANTS; do
     BUILD_CMD+=(--platform "$PLATFORMS")
     BUILD_CMD+=(--build-arg VERSION="$VERSION")
     BUILD_CMD+=(--tag "$FULL_IMAGE:$VERSION")
-    BUILD_CMD+=(--tag "$FULL_IMAGE:latest")
+
+    # Only tag the highest version as "latest"
+    if [ "$VERSION" = "$LATEST_VERSION" ]; then
+        BUILD_CMD+=(--tag "$FULL_IMAGE:latest")
+    fi
     BUILD_CMD+=(--file "images/$IMAGE_NAME/Dockerfile")
     
     if [ "$PUSH_IMAGES" = "true" ]; then
         BUILD_CMD+=(--push)
+        BUILD_CMD+=(--sbom=true)
     else
         # partial output to avoid loading all multi-arch layers into local docker daemon
         echo "Dry Run (Push disabled)"
@@ -139,13 +147,25 @@ for VERSION in $VARIANTS; do
 
     # Execute Build
     "${BUILD_CMD[@]}" "images/$IMAGE_NAME"
-    
+
     if [ "$PUSH_IMAGES" = "true" ]; then
         echo "Pushed $FULL_IMAGE:$VERSION"
         echo "=================================================="
         echo "Manifest Details:"
         docker buildx imagetools inspect "$FULL_IMAGE:$VERSION"
         echo "=================================================="
+
+        # Sign images with cosign (keyless via OIDC in CI)
+        if command -v cosign &> /dev/null; then
+            echo "Signing $FULL_IMAGE:$VERSION with cosign..."
+            cosign sign --yes "$FULL_IMAGE:$VERSION"
+            if [ "$VERSION" = "$LATEST_VERSION" ]; then
+                cosign sign --yes "$FULL_IMAGE:latest"
+            fi
+            echo "Image signed successfully."
+        else
+            echo "Warning: cosign not found, skipping image signing."
+        fi
     else
         echo "Build Successful. Would have pushed: $FULL_IMAGE:$VERSION"
     fi

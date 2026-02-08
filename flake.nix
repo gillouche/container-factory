@@ -17,11 +17,17 @@
             trivy
             gnumake
             docker-buildx
+            hadolint
+            shellcheck
+            dive
+            cosign
+            pre-commit
           ];
 
           shellHook = ''
             echo "Container Factory Dev Environment"
             echo "Tools available: make, trivy, docker-buildx"
+            echo "Security tools: hadolint, shellcheck, dive, cosign, pre-commit"
           '';
         };
       }
