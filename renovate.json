@@ -1,11 +1,12 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
     "extends": [
-        "config:base",
+        "config:recommended",
         ":prHourlyLimitNone",
         ":prConcurrentLimitNone",
         "docker:pinDigests"
     ],
+    "platformAutomerge": true,
     "docker": {
         "pinDigests": true
     },
@@ -18,6 +19,16 @@
                 "digest"
             ],
             "automerge": true
+        }
+    ],
+    "customManagers": [
+        {
+            "customType": "regex",
+            "fileMatch": ["images/python-distroless/VARIANTS"],
+            "matchStrings": ["(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+            "datasourceTemplate": "docker",
+            "depNameTemplate": "python",
+            "versioningTemplate": "docker"
         }
     ]
 }

@@ -6,6 +6,7 @@ on:
     paths:
       - "images/**"
       - "ci/**"
+      - "tests/**"
       - ".github/workflows/**"
       - "Makefile"
       - "flake.nix"
@@ -14,6 +15,7 @@ on:
     paths:
       - "images/**"
       - "ci/**"
+      - "tests/**"
       - ".github/workflows/**"
       - "Makefile"
       - "flake.nix"
@@ -21,6 +23,10 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 3 * * *' # Nightly rebuild at 3 AM UTC
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   prepare:

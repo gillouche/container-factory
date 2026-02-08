@@ -1,5 +1,7 @@
 # Container Factory
 
+[![Build & Publish](https://github.com/gillouche/container-factory/actions/workflows/build.yaml/badge.svg)](https://github.com/gillouche/container-factory/actions/workflows/build.yaml)
+
 A central monorepo for building hardened, security-scanned Docker images for the homelab.
 
 ## Architecture
