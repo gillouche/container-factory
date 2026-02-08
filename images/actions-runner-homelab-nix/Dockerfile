@@ -1,33 +1,22 @@
 ARG VERSION=2.331.0
 
+# FROM nexus.gillouche.homelab/docker-hosted/base/actions-runner:${VERSION}
 FROM ghcr.io/actions/actions-runner:${VERSION}@sha256:dced476aa42703ebd9aafc295ce52f160989c4528e831fc3be2aef83a1b3f6da
 
-# Switch to root to install dependencies
+# Switch to root to configure Nix
 USER root
 
-# hadolint ignore=DL3008
-# Versions intentionally unpinned: packages track the base image's Debian release.
-# Pinning would create false reproducibility and break on base image updates.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    xz-utils \
-    git \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create /nix directory and give ownership to runner for single-user install
+# Create /nix directory and give ownership to runner
 RUN mkdir -m 0755 /nix && chown runner:runner /nix
 
-# Use ENV HOME so PATH and config paths stay correct if the base image changes
+# Use ENV HOME so PATH and config paths stay correct
 ENV HOME=/home/runner
 
-# Switch to runner user
+# Switch back to runner user
 USER runner
 
 # Single-user Nix installation (pinned version, TLS enforced)
-# Combined into single layer: install, configure, verify, and cleanup
 ARG NIX_VERSION=2.33.2
-# hadolint ignore=DL4006
 SHELL ["/bin/bash", "-c"]
 
 RUN curl --proto '=https' --tlsv1.2 -sSf -L \
@@ -51,14 +40,7 @@ SHELL ["/bin/sh", "-c"]
 # Add Nix to PATH for all future commands and runtime
 ENV PATH="${HOME}/.nix-profile/bin:$PATH"
 
-# Remove xz-utils (only needed for Nix tar.xz extraction during install)
-USER root
-RUN apt-get purge -y --auto-remove xz-utils && rm -rf /var/lib/apt/lists/*
-USER runner
-
 ARG VERSION
-# OCI Metadata
 LABEL org.opencontainers.image.source="https://github.com/gillouche/container-factory"
-LABEL org.opencontainers.image.description="GitHub Actions Runner with Nix and homelab cache config"
-LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.description="GitHub Actions Runner (Wolfi) with Nix and homelab cache config"
 LABEL org.opencontainers.image.version="${VERSION}"

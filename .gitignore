@@ -13,3 +13,4 @@ Thumbs.db
 *~
 .envrc
 **/__pycache__
+trivy-results.json

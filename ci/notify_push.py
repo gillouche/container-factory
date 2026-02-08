@@ -13,9 +13,9 @@ def main():
     tags = sys.argv[2] # Version
     digest = sys.argv[3]
     
-    webhook_url = os.environ.get("DISCORD_WEBHOOK_GITHUB_ACTIONS")
+    webhook_url = os.environ.get("DISCORD_WEBHOOK")
     if not webhook_url:
-        print("Skipping notification: DISCORD_WEBHOOK_GITHUB_ACTIONS not set.")
+        print("Skipping notification: DISCORD_WEBHOOK not set.")
         sys.exit(0)
 
     print(f"Sending Discord notification for {image_name}:{tags}...")
