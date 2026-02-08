@@ -44,7 +44,7 @@ RUN curl --proto '=https' --tlsv1.2 -sSf -L \
     > "${HOME}/.config/nix/nix.conf" && \
     nix --version && \
     nix-collect-garbage -d && \
-    rm -rf /nix/var/nix/gcroots/auto/* ~/.cache/nix \
+    rm -rf /nix/var/nix/gcroots/auto/* ~/.cache/nix
 
 SHELL ["/bin/sh", "-c"]
 
