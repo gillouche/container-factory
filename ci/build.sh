@@ -154,13 +154,17 @@ for VERSION in $VARIANTS; do
         echo "Checking if push is necessary..."
         # LOCAL_ID was saved before cleanup in the pre-flight section.
         # Get Remote Config Digest (this matches Image ID for OCI/Docker v2.2)
-        REMOTE_ID=$(crane config "$FULL_IMAGE:$VERSION" 2>/dev/null | sha256sum | awk '{print "sha256:"$1}')
-
-        if [ "$LOCAL_ID" = "$REMOTE_ID" ]; then
-             echo "Image $FULL_IMAGE:$VERSION (linux/amd64) matches remote config. Skipping push."
-             continue
+        REMOTE_CONFIG=$(crane config "$FULL_IMAGE:$VERSION" 2>/dev/null || true)
+        if [ -n "$REMOTE_CONFIG" ]; then
+            REMOTE_ID=$(echo "$REMOTE_CONFIG" | sha256sum | awk '{print "sha256:"$1}')
+            if [ "$LOCAL_ID" = "$REMOTE_ID" ]; then
+                 echo "Image $FULL_IMAGE:$VERSION (linux/amd64) matches remote config. Skipping push."
+                 continue
+            else
+                 echo "Config differs (Local: ${LOCAL_ID:0:12} Remote: ${REMOTE_ID:0:12}). Proceeding to push..."
+            fi
         else
-             echo "Config differs (Local: ${LOCAL_ID:0:12} Remote: ${REMOTE_ID:0:12}). Proceeding to push..."
+            echo "Image not found in registry. Proceeding to push..."
         fi
     fi
 
