@@ -79,6 +79,13 @@ jobs:
       - name: Setup Nix Environment
         uses: ./.github/actions/setup-nix-env
 
+      - name: Send Start Notification
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          status: info
+          title: CI Pipeline
+          message: "Build started for commit ${{ github.sha }}"
+
       - name: Build and Push
         run: |
           nix develop \
@@ -90,4 +97,20 @@ jobs:
           NEXUS_NAMESPACE: docker-hosted
           PUSH_IMAGES: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'schedule' }}
           SCAN_IMAGES: true
-          SECURITY_NOTIFICATIONS_DISCORD: ${{ secrets.SECURITY_NOTIFICATIONS_DISCORD }}
+          # SECURITY_NOTIFICATIONS_DISCORD: automatically retrieved from runner env
+
+      - name: Send Success Notification
+        if: success()
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          status: success
+          title: CI Pipeline
+          message: "Build completed successfully for commit ${{ github.sha }}"
+
+      - name: Send Failure Notification
+        if: failure()
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          status: failure
+          title: CI Pipeline
+          message: "Build failed for commit ${{ github.sha }}"

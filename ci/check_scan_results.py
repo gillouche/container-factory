@@ -130,7 +130,7 @@ def main():
             print(f"  - {item}")
             
         # Send Discord Notification if configured
-        webhook_url = os.environ.get("SECURITY_NOTIFICATIONS_DISCORD")
+        webhook_url = os.environ.get("DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS")
         if webhook_url:
             print("Sending Discord notification for stale ignores...")
             image_context = os.environ.get("IMAGE_NAME", "Unknown Image")
