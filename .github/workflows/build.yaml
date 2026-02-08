@@ -2,7 +2,7 @@ name: Build & Publish
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "**" ]
     paths:
       - "images/**"
       - "ci/**"
@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     name: Build Images
-    runs-on: playground-runner # Using the runner with DIND sidecar
+    runs-on: container-factory-runner # Using the runner with DIND sidecar
     steps:
       - name: Checkout
         uses: actions/checkout@v4
