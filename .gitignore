@@ -12,3 +12,4 @@ Thumbs.db
 *.swo
 *~
 .envrc
+**/__pycache__
