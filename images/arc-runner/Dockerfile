@@ -5,8 +5,8 @@ FROM ghcr.io/actions/actions-runner:${VERSION}@sha256:dced476aa42703ebd9aafc295c
 # Switch to root to install dependencies
 USER root
 
-# Install Nix dependencies
-RUN apt-get update && apt-get upgrade -y && apt-get install -y \
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     xz-utils \
     git \
@@ -20,7 +20,7 @@ RUN mkdir -m 0755 /nix && chown runner:runner /nix
 USER runner
 
 # Single-user Nix installation (pinned version, TLS enforced)
-ARG NIX_VERSION=2.31.0
+ARG NIX_VERSION=2.33.2
 RUN curl --proto '=https' --tlsv1.2 -sSf -L \
     "https://releases.nixos.org/nix/nix-${NIX_VERSION}/install" \
     | sh -s -- --no-daemon
@@ -28,12 +28,25 @@ RUN curl --proto '=https' --tlsv1.2 -sSf -L \
 # Add Nix to PATH for all future commands
 ENV PATH="/home/runner/.nix-profile/bin:$PATH"
 
-# Configure Nix (enable flakes)
+# Configure Nix
+# sandbox=false: required inside containers (no nested namespaces)
+# filter-syscalls=false: required for QEMU-emulated multi-arch builds
+#   (Nix seccomp BPF filter fails under QEMU aarch64 emulation, see NixOS/nix#5258)
 RUN mkdir -p ~/.config/nix \
-    && echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf \
-    && echo 'sandbox = false' >> ~/.config/nix/nix.conf \
-    && echo 'filter-syscalls = false' >> ~/.config/nix/nix.conf \
-    && echo 'extra-trusted-users = runner' >> ~/.config/nix/nix.conf
+    && printf '%s\n' \
+    'experimental-features = nix-command flakes' \
+    'sandbox = false' \
+    'filter-syscalls = false' \
+    > ~/.config/nix/nix.conf
 
 # Verify Nix installation
 RUN nix --version
+
+ARG VERSION
+# OCI Metadata
+LABEL org.opencontainers.image.source="https://github.com/gillouche/container-factory"
+LABEL org.opencontainers.image.description="GitHub Actions Runner with Nix"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.version="${VERSION}"
+
+ENTRYPOINT ["/home/runner/run.sh"]

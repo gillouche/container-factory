@@ -95,7 +95,16 @@ for VERSION in $VARIANTS; do
         if command -v trivy &> /dev/null; then
             echo "Running Trivy..."
             # Explicitly capture exit code to ensure failure stops the build
-            if ! trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed "$LOCAL_TAG"; then
+            # We skip specific files (Nix store secrets/patches) and use .trivyignore for CVEs
+            export TRIVY_DISABLE_VEX_NOTICE=true
+            # Check for per-image .trivyignore
+            TRIVY_ARGS=()
+            if [ -f "images/$IMAGE_NAME/.trivyignore" ]; then
+                echo "Using .trivyignore from images/$IMAGE_NAME/"
+                TRIVY_ARGS+=(--ignorefile "images/$IMAGE_NAME/.trivyignore")
+            fi
+
+            if ! trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed "${TRIVY_ARGS[@]}" --skip-files "**/ssh_host_ed25519_key,**/*.pem,**/*.patch" "$LOCAL_TAG"; then
                 echo "Trivy found Critical/High vulnerabilities!"
                 docker rmi "$LOCAL_TAG" || true
                 exit 1

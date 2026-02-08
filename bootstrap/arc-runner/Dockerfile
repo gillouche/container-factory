@@ -17,18 +17,25 @@ RUN mkdir -m 0755 /nix && chown runner:runner /nix
 # Switch to runner user
 USER runner
 
-# Single-user installation
-RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon
+# Single-user Nix installation (pinned version, TLS enforced)
+ARG NIX_VERSION=2.33.2
+RUN curl --proto '=https' --tlsv1.2 -sSf -L \
+    "https://releases.nixos.org/nix/nix-${NIX_VERSION}/install" \
+    | sh -s -- --no-daemon
 
 # Add Nix to PATH for all future commands
 ENV PATH="/home/runner/.nix-profile/bin:$PATH"
 
-# Configure Nix (enable flakes)
+# Configure Nix
+# sandbox=false: required inside containers (no nested namespaces)
+# filter-syscalls=false: required for QEMU-emulated multi-arch builds
 RUN mkdir -p ~/.config/nix \
-    && echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf \
-    && echo 'sandbox = false' >> ~/.config/nix/nix.conf \
-    && echo 'filter-syscalls = false' >> ~/.config/nix/nix.conf \
-    && echo 'extra-trusted-users = runner' >> ~/.config/nix/nix.conf
+    && printf '%s\n' \
+    'experimental-features = nix-command flakes' \
+    'sandbox = false' \
+    'filter-syscalls = false' \
+    'extra-trusted-users = runner' \
+    > ~/.config/nix/nix.conf
 
 # Verify Nix installation
 RUN nix --version
