@@ -24,16 +24,36 @@
     "customManagers": [
         {
             "customType": "regex",
-            "fileMatch": ["images/python-distroless/VARIANTS"],
-            "matchStrings": ["(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+            "fileMatch": [
+                "images/python-distroless/VARIANTS"
+            ],
+            "matchStrings": [
+                "(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+            ],
             "datasourceTemplate": "docker",
             "depNameTemplate": "python",
             "versioningTemplate": "docker"
         },
         {
             "customType": "regex",
-            "fileMatch": ["images/arc-runner-homelab-nix/VARIANTS"],
-            "matchStrings": ["(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+            "fileMatch": [
+                "images/actions-runner/VARIANTS"
+            ],
+            "matchStrings": [
+                "(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+            ],
+            "datasourceTemplate": "github-releases",
+            "depNameTemplate": "actions/runner",
+            "extractVersionTemplate": "^v(?<version>.*)$"
+        },
+        {
+            "customType": "regex",
+            "fileMatch": [
+                "images/actions-runner-homelab-nix/VARIANTS"
+            ],
+            "matchStrings": [
+                "(?<currentValue>\\d+\\.\\d+\\.\\d+)"
+            ],
             "datasourceTemplate": "docker",
             "depNameTemplate": "ghcr.io/actions/actions-runner",
             "versioningTemplate": "docker"

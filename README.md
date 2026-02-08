@@ -1,4 +1,4 @@
-# Container Factory
+# container-factory
 
 [![Build & Publish](https://github.com/gillouche/container-factory/actions/workflows/build.yaml/badge.svg)](https://github.com/gillouche/container-factory/actions/workflows/build.yaml)
 
