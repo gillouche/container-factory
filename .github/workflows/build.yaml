@@ -54,8 +54,7 @@ jobs:
           PUSH_IMAGES: ${{ github.ref == 'refs/heads/main' || github.event_name == 'schedule' }}
           SCAN_IMAGES: "true"
 
-      - name: Push to Nix Cache (Main Only)
-        if: github.ref == 'refs/heads/main'
+      - name: Push to Nix Cache
         run: |
           echo "Pushing build artifacts to Nix Cache..."
           export AWS_ACCESS_KEY_ID=$NIX_ACCESS_KEY_ID
