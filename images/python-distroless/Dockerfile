@@ -2,12 +2,15 @@ ARG VERSION=3.13
 
 FROM python:${VERSION}-slim-trixie AS donor
 
+# Upgrade to patch known CVEs in bundled pip/setuptools/wheel
 # hadolint ignore=DL3013
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 FROM gcr.io/distroless/base-debian13:nonroot
 
 COPY --from=donor /usr/local /usr/local
+
+USER nonroot
 
 # OCI Metadata
 LABEL org.opencontainers.image.source="https://github.com/gillouche/container-factory"

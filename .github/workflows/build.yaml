@@ -10,6 +10,13 @@ on:
       - "Makefile"
       - "flake.nix"
       - "flake.lock"
+  pull_request:
+    paths:
+      - "images/**"
+      - "ci/**"
+      - ".github/workflows/**"
+      - "Makefile"
+      - "flake.nix"
       - "flake.lock"
   workflow_dispatch:
   schedule:
@@ -46,6 +53,10 @@ jobs:
     name: Build ${{ matrix.image }}:${{ matrix.version }}
     needs: prepare
     runs-on: container-factory-runner # Using the runner with DIND sidecar
+    timeout-minutes: 30
+    concurrency:
+      group: build-${{ matrix.image }}-${{ matrix.version }}-${{ github.ref }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
@@ -79,6 +90,6 @@ jobs:
         env:
           NEXUS_REGISTRY: nexus.gillouche.homelab
           NEXUS_NAMESPACE: docker-hosted
-          # Push only on main branch or scheduled builds
-          PUSH_IMAGES: ${{ github.ref == 'refs/heads/main' || github.event_name == 'schedule' }}
+          # Push only on main branch push or scheduled builds (not PRs or feature branches)
+          PUSH_IMAGES: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'schedule' }}
           SCAN_IMAGES: "true"

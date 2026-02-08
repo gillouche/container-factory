@@ -46,6 +46,23 @@ if [ -n "$TARGET_VERSION" ]; then
     VARIANTS="$TARGET_VERSION"
 fi
 
+# Registry cache location
+CACHE_IMAGE="$REGISTRY/$NAMESPACE/cache/$IMAGE_NAME"
+
+# ---------------------------------------------------------
+# Ensure buildx is available and builder exists (once)
+# ---------------------------------------------------------
+if ! docker buildx version > /dev/null 2>&1; then
+    echo "Error: 'docker buildx' is not available. Please install the Docker Buildx plugin."
+    exit 1
+fi
+
+if ! docker buildx inspect homelab-builder > /dev/null 2>&1; then
+    docker buildx create --name homelab-builder --driver docker-container
+    docker buildx use homelab-builder
+    docker buildx inspect --bootstrap
+fi
+
 # Build Loop
 for VERSION in $VARIANTS; do
     # User requested docker-hosted/base/ structure
@@ -55,18 +72,6 @@ for VERSION in $VARIANTS; do
     echo "Push Enabled: $PUSH_IMAGES"
     echo "Scan Enabled: $SCAN_IMAGES"
     echo "=================================================="
-
-    # Create builder if needed (DIND supports buildx)
-    if ! docker buildx version > /dev/null 2>&1; then
-        echo "Error: 'docker buildx' is not available. Please install the Docker Buildx plugin."
-        exit 1
-    fi
-
-    if ! docker buildx inspect homelab-builder > /dev/null 2>&1; then
-        docker buildx create --name homelab-builder --driver docker-container
-        docker buildx use homelab-builder
-        docker buildx inspect --bootstrap
-    fi
 
     # ---------------------------------------------------------
     # 1. Pre-flight Verification (Scan + Smoke Test)
@@ -100,29 +105,26 @@ for VERSION in $VARIANTS; do
             echo "Trivy not found. Skipping security scan."
         fi
         
-        # 1.2 Smoke Test
-        # Determine test script based on image name
-        TEST_SCRIPT=""
-        # Determine test script based on image name
-        TEST_SCRIPT=""
-        if [[ "$IMAGE_NAME" == *"python"* ]]; then
-            TEST_SCRIPT="tests/python/hello.py"
-        fi
-
-        if [ -n "$TEST_SCRIPT" ] && [ -f "$TEST_SCRIPT" ]; then
-            echo "Running Smoke Test ($TEST_SCRIPT)..."
-            # Pipe script content to container to avoid DIND volume mount issues
-            if cat "$TEST_SCRIPT" | docker run --rm -i "$LOCAL_TAG" -; then
-                 echo "Smoke Test Passed!"
+        # 1.2 Smoke Test (convention-based: images/$IMAGE_NAME/test.sh)
+        TEST_SCRIPT="images/$IMAGE_NAME/test.sh"
+        if [ -f "$TEST_SCRIPT" ]; then
+            echo "Running smoke test ($TEST_SCRIPT)..."
+            if bash "$TEST_SCRIPT" "$LOCAL_TAG" "$VERSION"; then
+                echo "Smoke test passed!"
             else
-                 echo "Smoke Test Failed!"
-                 docker rmi "$LOCAL_TAG" || true
-                 exit 1
+                echo "Smoke test failed!"
+                docker rmi "$LOCAL_TAG" || true
+                exit 1
             fi
         else
-            echo "Warning: No smoke test defined or file not found for $IMAGE_NAME"
+            echo "Warning: No smoke test found for $IMAGE_NAME (no test.sh)"
         fi
-        
+
+        # Save image ID for idempotency check before cleanup
+        if [ "$PUSH_IMAGES" = "true" ]; then
+            LOCAL_ID=$(docker inspect --format='{{.Id}}' "$LOCAL_TAG")
+        fi
+
         # Cleanup
         docker rmi "$LOCAL_TAG" || true
     else
@@ -132,13 +134,9 @@ for VERSION in $VARIANTS; do
     # ---------------------------------------------------------
     # 2. Check for Idempotency (if Pushing)
     # ---------------------------------------------------------
-    if [ "$PUSH_IMAGES" = "true" ] && command -v crane &> /dev/null; then
+    if [ "$PUSH_IMAGES" = "true" ] && command -v crane &> /dev/null && [ -n "${LOCAL_ID:-}" ]; then
         echo "Checking if push is necessary..."
-        # If we scanned, we have LOCAL_TAG (linux/amd64). Its Image ID is the Config Digest.
-        # If we didn't scan, well, PUSH_IMAGES=true forces SCAN_IMAGES=true (line 36).
-        # So LOCAL_TAG exists.
-
-        LOCAL_ID=$(docker inspect --format='{{.Id}}' "$LOCAL_TAG")
+        # LOCAL_ID was saved before cleanup in the pre-flight section.
         # Get Remote Config Digest (this matches Image ID for OCI/Docker v2.2)
         REMOTE_ID=$(crane config "$FULL_IMAGE:$VERSION" 2>/dev/null | sha256sum | awk '{print "sha256:"$1}')
 
@@ -156,7 +154,6 @@ for VERSION in $VARIANTS; do
     
     # Construct Build Command
     BUILD_CMD=(docker buildx build)
-    BUILD_CMD+=(--platform "$PLATFORMS")
     BUILD_CMD+=(--build-arg VERSION="$VERSION")
     BUILD_CMD+=(--tag "$FULL_IMAGE:$VERSION")
 
@@ -165,13 +162,18 @@ for VERSION in $VARIANTS; do
         BUILD_CMD+=(--tag "$FULL_IMAGE:latest")
     fi
     BUILD_CMD+=(--file "images/$IMAGE_NAME/Dockerfile")
-    
+
     if [ "$PUSH_IMAGES" = "true" ]; then
+        BUILD_CMD+=(--platform "$PLATFORMS")
         BUILD_CMD+=(--push)
         BUILD_CMD+=(--sbom=true)
+        BUILD_CMD+=(--provenance=true)
+        BUILD_CMD+=(--cache-from "type=registry,ref=$CACHE_IMAGE:$VERSION")
+        BUILD_CMD+=(--cache-to "type=registry,ref=$CACHE_IMAGE:$VERSION,mode=max")
     else
-        # partial output to avoid loading all multi-arch layers into local docker daemon
-        echo "Dry Run (Push disabled)"
+        # Single-platform build loaded into local daemon for validation
+        BUILD_CMD+=(--load)
+        echo "Local build (single-platform, loaded into local daemon)"
     fi
 
     # Execute Build
