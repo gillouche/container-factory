@@ -1,4 +1,6 @@
-FROM ghcr.io/actions/actions-runner:latest
+ARG VERSION=2.331.0
+
+FROM ghcr.io/actions/actions-runner:${VERSION}@sha256:dced476aa42703ebd9aafc295ce52f160989c4528e831fc3be2aef83a1b3f6da
 
 # Switch to root to install dependencies
 USER root
@@ -17,8 +19,11 @@ RUN mkdir -m 0755 /nix && chown runner:runner /nix
 # Switch to runner user
 USER runner
 
-# Single-user installation
-RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon
+# Single-user Nix installation (pinned version, TLS enforced)
+ARG NIX_VERSION=2.31.0
+RUN curl --proto '=https' --tlsv1.2 -sSf -L \
+    "https://releases.nixos.org/nix/nix-${NIX_VERSION}/install" \
+    | sh -s -- --no-daemon
 
 # Add Nix to PATH for all future commands
 ENV PATH="/home/runner/.nix-profile/bin:$PATH"
