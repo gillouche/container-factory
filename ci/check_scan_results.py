@@ -15,9 +15,14 @@ def load_trivy_ignores(ignore_file):
         
     with open(ignore_file, 'r') as f:
         for line in f:
+            # Strip comments first (e.g. "CVE-1234 # reason")
+            if '#' in line:
+                line = line.split('#', 1)[0]
+            
             line = line.strip()
-            # Skip empty lines and comments
-            if not line or line.startswith('#'):
+            
+            # Skip empty lines
+            if not line:
                 continue
             ignores.add(line)
     return ignores
