@@ -107,6 +107,10 @@ for VERSION in $VARIANTS; do
             fi
             
             echo "Analyzing scan results..."
+            # Export env vars for the script to use in Discord notifications
+            export IMAGE_NAME="$FULL_IMAGE"
+            export VERSION="$VERSION"
+            
             if ! python3 ci/check_scan_results.py "$TRIVY_JSON" "$IGNORE_FILE"; then
                 echo "Security check failed!"
                 docker rmi "$LOCAL_TAG" || true
@@ -211,6 +215,14 @@ for VERSION in $VARIANTS; do
         else
             echo "Warning: cosign not found, skipping image signing."
         fi
+
+        # Send Discord Notification
+        # Retrieve Digest from imagetools (more reliable than build output)
+        DIGEST=$(docker buildx imagetools inspect "$FULL_IMAGE:$VERSION" --format "{{ .Manifest.Digest }}")
+        echo "Image Digest: $DIGEST"
+        
+        # Only notify if we pushed a new image (which we did if we are here)
+        python3 ci/notify_push.py "$FULL_IMAGE" "$VERSION" "$DIGEST"
     else
         echo "Build Successful. Would have pushed: $FULL_IMAGE:$VERSION"
     fi
