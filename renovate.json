@@ -29,6 +29,14 @@
             "datasourceTemplate": "docker",
             "depNameTemplate": "python",
             "versioningTemplate": "docker"
+        },
+        {
+            "customType": "regex",
+            "fileMatch": ["images/arc-runner-homelab-nix/VARIANTS"],
+            "matchStrings": ["(?<currentValue>\\d+\\.\\d+\\.\\d+)"],
+            "datasourceTemplate": "docker",
+            "depNameTemplate": "ghcr.io/actions/actions-runner",
+            "versioningTemplate": "docker"
         }
     ]
 }

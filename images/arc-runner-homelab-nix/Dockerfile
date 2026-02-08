@@ -6,6 +6,8 @@ FROM ghcr.io/actions/actions-runner:${VERSION}@sha256:dced476aa42703ebd9aafc295c
 USER root
 
 # hadolint ignore=DL3008
+# Versions intentionally unpinned: packages track the base image's Debian release.
+# Pinning would create false reproducibility and break on base image updates.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     xz-utils \
@@ -15,6 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Create /nix directory and give ownership to runner for single-user install
 RUN mkdir -m 0755 /nix && chown runner:runner /nix
+
+# Use ENV HOME so PATH and config paths stay correct if the base image changes
+ENV HOME=/home/runner
 
 # Switch to runner user
 USER runner
@@ -26,18 +31,27 @@ RUN curl --proto '=https' --tlsv1.2 -sSf -L \
     | sh -s -- --no-daemon
 
 # Add Nix to PATH for all future commands
-ENV PATH="/home/runner/.nix-profile/bin:$PATH"
+ENV PATH="${HOME}/.nix-profile/bin:$PATH"
 
-# Configure Nix
+# Remove xz-utils — only needed for Nix tar.xz extraction during install
+USER root
+RUN apt-get purge -y --auto-remove xz-utils && rm -rf /var/lib/apt/lists/*
+USER runner
+
+# Configure Nix with baked-in SeaweedFS cache for faster first nix develop
 # sandbox=false: required inside containers (no nested namespaces)
 # filter-syscalls=false: required for QEMU-emulated multi-arch builds
 #   (Nix seccomp BPF filter fails under QEMU aarch64 emulation, see NixOS/nix#5258)
-RUN mkdir -p ~/.config/nix \
-    && printf '%s\n' \
+# substituters: SeaweedFS S3 cache tried first, then official cache as fallback
+# require-sigs=false: SeaweedFS cache uses unsigned narinfo
+RUN mkdir -p "${HOME}/.config/nix" && printf '%s\n' \
     'experimental-features = nix-command flakes' \
     'sandbox = false' \
     'filter-syscalls = false' \
-    > ~/.config/nix/nix.conf
+    'substituters = s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http https://cache.nixos.org/' \
+    'trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
+    'require-sigs = false' \
+    > "${HOME}/.config/nix/nix.conf"
 
 # Verify Nix installation
 RUN nix --version
@@ -48,5 +62,3 @@ LABEL org.opencontainers.image.source="https://github.com/gillouche/container-fa
 LABEL org.opencontainers.image.description="GitHub Actions Runner with Nix"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.version="${VERSION}"
-
-ENTRYPOINT ["/home/runner/run.sh"]

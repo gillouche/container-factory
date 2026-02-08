@@ -94,18 +94,21 @@ for VERSION in $VARIANTS; do
         # 1.1 Security Scan
         if command -v trivy &> /dev/null; then
             echo "Running Trivy..."
-            # Explicitly capture exit code to ensure failure stops the build
-            # We skip specific files (Nix store secrets/patches) and use .trivyignore for CVEs
-            export TRIVY_DISABLE_VEX_NOTICE=true
-            # Check for per-image .trivyignore
-            TRIVY_ARGS=()
-            if [ -f "images/$IMAGE_NAME/.trivyignore" ]; then
-                echo "Using .trivyignore from images/$IMAGE_NAME/"
-                TRIVY_ARGS+=(--ignorefile "images/$IMAGE_NAME/.trivyignore")
+            # Generate JSON report (do not fail here, let the python script decide)
+            # We run without ignores to detect stale entries
+            echo "Generating Trivy report..."
+            TRIVY_JSON="trivy-results.json"
+            trivy image --format json --output "$TRIVY_JSON" --severity HIGH,CRITICAL --ignore-unfixed "$LOCAL_TAG"
+            
+            # Run analysis script
+            IGNORE_FILE="images/$IMAGE_NAME/.trivyignore"
+            if [ ! -f "$IGNORE_FILE" ]; then
+                IGNORE_FILE="/dev/null"
             fi
-
-            if ! trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed "${TRIVY_ARGS[@]}" --skip-files "**/ssh_host_ed25519_key,**/*.pem,**/*.patch" "$LOCAL_TAG"; then
-                echo "Trivy found Critical/High vulnerabilities!"
+            
+            echo "Analyzing scan results..."
+            if ! python3 ci/check_scan_results.py "$TRIVY_JSON" "$IGNORE_FILE"; then
+                echo "Security check failed!"
                 docker rmi "$LOCAL_TAG" || true
                 exit 1
             fi
