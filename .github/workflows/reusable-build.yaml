@@ -36,9 +36,6 @@ jobs:
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Setup temporary Nexus CA (Bootstrap)
         shell: bash
         run: |
@@ -78,7 +75,6 @@ jobs:
 
           nix develop ./#default --command ./ci/build.sh "${{ inputs.image }}" "${{ inputs.version }}"
         env:
-          SMOKE_TEST: "false"
           NEXUS_REGISTRY: nexus.gillouche.homelab
           NEXUS_NAMESPACE: docker-hosted
           PUSH_IMAGES: ${{ inputs.push }}

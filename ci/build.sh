@@ -104,7 +104,6 @@ for VERSION in $VARIANTS; do
         --platform linux/amd64 \
         --build-arg VERSION="$VERSION" \
         --build-arg SOURCE_DATE_EPOCH="$GIT_DATE" \
-        --build-arg PYTHONDONTWRITEBYTECODE=1 \
         --tag "$LOCAL_TAG" \
         --file "images/$IMAGE_NAME/Dockerfile" \
         "images/$IMAGE_NAME"
@@ -161,7 +160,6 @@ for VERSION in $VARIANTS; do
     BUILD_CMD=(docker buildx build)
     BUILD_CMD+=(--build-arg VERSION="$VERSION")
     BUILD_CMD+=(--build-arg SOURCE_DATE_EPOCH="$GIT_DATE")
-    BUILD_CMD+=(--build-arg PYTHONDONTWRITEBYTECODE=1)
     
     BUILD_CMD+=(--label "org.opencontainers.image.created=$BUILD_DATE")
     BUILD_CMD+=(--label "org.opencontainers.image.revision=$GIT_REV")
