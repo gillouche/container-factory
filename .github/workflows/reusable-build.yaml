@@ -81,7 +81,7 @@ jobs:
           docker buildx inspect --bootstrap
 
       - name: Setup Nix Environment
-        uses: ./.github/actions/setup-nix-env
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
 
 
 

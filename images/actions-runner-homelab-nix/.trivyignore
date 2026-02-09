@@ -27,11 +27,6 @@ CVE-2026-24842  # tar (Path traversal)
 
 # Container Runtime & Docker (bundled in runner)
 # These affect runc, containerd (CVE-2025-52881 escape), and golang stdlib issues.
-CVE-2025-52881  # opencontainers/selinux (Container escape/DoS)
-CVE-2025-61726  # golang net/url (Memory exhaustion)
-CVE-2025-61728  # golang archive/zip (Excessive CPU)
-CVE-2025-61729  # golang crypto/x509 (DoS)
-CVE-2025-61730  # golang crypto/tls (DoS)
 CVE-2025-68121  # golang crypto/tls (DoS)
 
 # -----------------

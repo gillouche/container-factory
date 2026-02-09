@@ -7,7 +7,11 @@ REGISTRY=${NEXUS_REGISTRY:-nexus.gillouche.homelab}
 NAMESPACE=${NEXUS_NAMESPACE:-docker-hosted}
 
 # Using Docker Buildx (DIND Sidecar supports this)
-PLATFORMS="linux/amd64,linux/arm64"
+if [ -f "images/$IMAGE_NAME/PLATFORMS" ]; then
+    PLATFORMS=$(cat "images/$IMAGE_NAME/PLATFORMS")
+else
+    PLATFORMS="linux/amd64,linux/arm64"
+fi
 
 # Check if image exists
 if [ ! -d "images/$IMAGE_NAME" ]; then
