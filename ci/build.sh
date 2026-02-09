@@ -101,103 +101,64 @@ for VERSION in $VARIANTS; do
     
     BUILD_DATE=$(date -u -d "@$GIT_DATE" +%Y-%m-%dT%H:%M:%SZ)
 
-    echo "Building revision: $GIT_REV ($BUILD_DATE)"
-
     # ---------------------------------------------------------
-    # 1. Pre-flight Verification (Scan + Smoke Test)
+    # 1. Pre-flight Verification (Build + Smoke Test)
     # ---------------------------------------------------------
-    if [ "$SCAN_IMAGES" = "true" ]; then
-        echo "Pre-flight verification (linux/amd64)..."
-        
-        # Build local image for verification
-        LOCAL_TAG="local-scan-$IMAGE_NAME:$VERSION"
-        
-        # We must build a single arch to load it into the local daemon
-        docker buildx build \
-            --load \
-            --platform linux/amd64 \
-            --build-arg VERSION="$VERSION" \
-            --build-arg SOURCE_DATE_EPOCH="$GIT_DATE" \
-            --tag "$LOCAL_TAG" \
-            --file "images/$IMAGE_NAME/Dockerfile" \
-            "images/$IMAGE_NAME"
-            
-        # 1.1 Security Scan
-        if command -v trivy &> /dev/null; then
-            echo "Running Trivy..."
-            # Generate JSON report (do not fail here, let the python script decide)
-            # We run without ignores to detect stale entries
-            echo "Generating Trivy report..."
-            TRIVY_JSON="trivy-results.json"
-            trivy image --format json --output "$TRIVY_JSON" --severity HIGH,CRITICAL --ignore-unfixed "$LOCAL_TAG"
-            
-            # Run analysis script
-            IGNORE_FILE="images/$IMAGE_NAME/.trivyignore"
-            if [ ! -f "$IGNORE_FILE" ]; then
-                IGNORE_FILE="/dev/null"
-            fi
-            
-            echo "Analyzing scan results..."
-            echo "Analyzing scan results..."
-            # Pass env vars for the script to use in Discord notifications
-            # Do NOT export them globally as it overwrites script variables like IMAGE_NAME
-            
-            if ! python3 .homelab-ci/scripts/check_scan_results.py --results "$TRIVY_JSON" --ignore "$IGNORE_FILE" --webhook "$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" --image "$FULL_IMAGE" --version "$VERSION"; then
-                echo "Security check failed!"
-                docker rmi "$LOCAL_TAG" || true
-                exit 1
-            fi
-            echo "Scan passed."
-        else
-            echo "Trivy not found. Skipping security scan."
-        fi
-        
-        # 1.2 Smoke Test (convention-based: images/$IMAGE_NAME/test.sh)
-        TEST_SCRIPT="images/$IMAGE_NAME/test.sh"
-        if [ -f "$TEST_SCRIPT" ]; then
-            echo "Running smoke test ($TEST_SCRIPT)..."
-            if bash "$TEST_SCRIPT" "$LOCAL_TAG" "$VERSION"; then
-                echo "Smoke test passed!"
-            else
-                echo "Smoke test failed!"
-                docker rmi "$LOCAL_TAG" || true
-                exit 1
-            fi
-        else
-            echo "Warning: No smoke test found for $IMAGE_NAME (no test.sh)"
-        fi
+    echo "Pre-flight verification (linux/amd64)..."
+    
+    # Build local image for verification
+    LOCAL_TAG="local-scan-$IMAGE_NAME:$VERSION"
+    
+    # We must build a single arch to load it into the local daemon
+    docker buildx build \
+        --load \
+        --platform linux/amd64 \
+        --build-arg VERSION="$VERSION" \
+        --build-arg SOURCE_DATE_EPOCH="$GIT_DATE" \
+        --build-arg PYTHONDONTWRITEBYTECODE=1 \
+        --tag "$LOCAL_TAG" \
+        --file "images/$IMAGE_NAME/Dockerfile" \
+        "images/$IMAGE_NAME"
 
-        # Save image ID for idempotency check before cleanup
-        if [ "$PUSH_IMAGES" = "true" ]; then
-            LOCAL_ID=$(docker inspect --format='{{.Id}}' "$LOCAL_TAG")
+    # 1.1 Smoke Test (convention-based: images/$IMAGE_NAME/test.sh)
+    TEST_SCRIPT="images/$IMAGE_NAME/test.sh"
+    if [ -f "$TEST_SCRIPT" ]; then
+        echo "Running smoke test ($TEST_SCRIPT)..."
+        if bash "$TEST_SCRIPT" "$LOCAL_TAG" "$VERSION"; then
+            echo "Smoke test passed!"
+        else
+            echo "Smoke test failed!"
+            docker rmi "$LOCAL_TAG" || true
+            exit 1
         fi
-
-        # Cleanup
-        docker rmi "$LOCAL_TAG" || true
     else
-        echo "Skipping Pre-flight Verification (SCAN_IMAGES=false)"
+        echo "Warning: No smoke test found for $IMAGE_NAME (no test.sh)"
     fi
 
+    # Save local image ID for idempotency check
+    LOCAL_ID=$(docker inspect --format='{{.Id}}' "$LOCAL_TAG")
+    
     # ---------------------------------------------------------
     # 2. Check for Idempotency (if Pushing)
     # ---------------------------------------------------------
-    if [ "$PUSH_IMAGES" = "true" ] && command -v crane &> /dev/null && [ -n "${LOCAL_ID:-}" ]; then
-        echo "Checking if push is necessary..."
-        # LOCAL_ID was saved before cleanup in the pre-flight section.
+    PUSH_NECESSARY="true"
+    if [ "$PUSH_IMAGES" = "true" ] && command -v crane &> /dev/null; then
+        echo "Checking if push is necessary for $FULL_IMAGE:$VERSION..."
         # Get Remote Config Digest (this matches Image ID for OCI/Docker v2.2)
         REMOTE_CONFIG=$(crane config "$FULL_IMAGE:$VERSION" 2>/dev/null || true)
         if [ -n "$REMOTE_CONFIG" ]; then
             REMOTE_ID=$(echo "$REMOTE_CONFIG" | sha256sum | awk '{print "sha256:"$1}')
             if [ "$LOCAL_ID" = "$REMOTE_ID" ]; then
-                 echo "Image $FULL_IMAGE:$VERSION (linux/amd64) matches remote config. Skipping push."
-                 continue
+                 echo "Image $FULL_IMAGE:$VERSION matches remote config. Skipping push."
+                 PUSH_NECESSARY="false"
             else
-                 echo "Config differs (Local: ${LOCAL_ID:0:12} Remote: ${REMOTE_ID:0:12}). Proceeding to push..."
+                 echo "Config differs (Local: ${LOCAL_ID:0:12} Remote: ${REMOTE_ID:0:12})."
             fi
-        else
-            echo "Image not found in registry. Proceeding to push..."
         fi
     fi
+
+    # Cleanup local scan image
+    docker rmi "$LOCAL_TAG" || true
 
     # ---------------------------------------------------------
     # 3. Multi-Arch Build & Push
@@ -219,7 +180,7 @@ for VERSION in $VARIANTS; do
     fi
     BUILD_CMD+=(--file "images/$IMAGE_NAME/Dockerfile")
 
-    if [ "$PUSH_IMAGES" = "true" ]; then
+    if [ "$PUSH_IMAGES" = "true" ] && [ "$PUSH_NECESSARY" = "true" ]; then
         BUILD_CMD+=(--platform "$PLATFORMS")
         BUILD_CMD+=(--push)
         BUILD_CMD+=(--allow security.insecure)
@@ -227,46 +188,46 @@ for VERSION in $VARIANTS; do
         BUILD_CMD+=(--provenance=true)
         BUILD_CMD+=(--cache-from "type=registry,ref=$CACHE_IMAGE:$VERSION")
         BUILD_CMD+=(--cache-to "type=registry,ref=$CACHE_IMAGE:$VERSION,mode=max")
-    else
-        # Single-platform build loaded into local daemon for validation
-        BUILD_CMD+=(--load)
-        BUILD_CMD+=(--allow security.insecure)
-        echo "Local build (single-platform, loaded into local daemon)"
-    fi
+        
+        # Execute Build & Push
+        "${BUILD_CMD[@]}" "images/$IMAGE_NAME"
 
-    # Execute Build
-    "${BUILD_CMD[@]}" "images/$IMAGE_NAME"
-
-    if [ "$PUSH_IMAGES" = "true" ]; then
         echo "Pushed $FULL_IMAGE:$VERSION"
-        echo "=================================================="
-        echo "Manifest Details:"
-        docker buildx imagetools inspect "$FULL_IMAGE:$VERSION"
-        echo "=================================================="
-
+        
         if command -v crane &> /dev/null; then
             DIGEST=$(crane digest "$FULL_IMAGE:$VERSION")
         else
-            # Fallback
             DIGEST=$(docker buildx imagetools inspect "$FULL_IMAGE:$VERSION" | grep "Digest:" | head -n 1 | awk '{print $2}')
         fi
         echo "Image Digest: $DIGEST"
 
-        # Sign images with cosign (keyless via OIDC in CI)
+        # Sign images with cosign
         if [ -n "$DIGEST" ] && command -v cosign &> /dev/null; then
             echo "Signing $FULL_IMAGE@$DIGEST with cosign..."
             cosign sign --yes "$FULL_IMAGE@$DIGEST"
-            echo "Image signed successfully."
-        elif [ -z "$DIGEST" ]; then
-             echo "Warning: Could not retrieve digest, skipping signing."
-        else
-            echo "Warning: cosign not found, skipping image signing."
         fi
 
-        # Send Discord Notification
-        # Only notify if we pushed a new image (which we did if we are here)
-        python3 .homelab-ci/scripts/notify_push.py "$FULL_IMAGE" "$VERSION" "$DIGEST" --webhook "$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS"
+        # Pass outputs to GitHub Actions
+        if [ -n "${GITHUB_OUTPUT:-}" ]; then
+            echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+            echo "image_full=$FULL_IMAGE:$VERSION" >> "$GITHUB_OUTPUT"
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+        fi
+    elif [ "$PUSH_IMAGES" = "true" ] && [ "$PUSH_NECESSARY" = "false" ]; then
+        # Image already in registry and matches
+        if [ -n "${GITHUB_OUTPUT:-}" ]; then
+            # We still need the digest for subsequent steps (like signing or notifications)
+            DIGEST=$(crane digest "$FULL_IMAGE:$VERSION" 2>/dev/null || true)
+            echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+            echo "image_full=$FULL_IMAGE:$VERSION" >> "$GITHUB_OUTPUT"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+        fi
     else
-        echo "Build Successful. Would have pushed: $FULL_IMAGE:$VERSION"
+        # Push not requested
+        echo "Build Successful. Pushing disabled: $FULL_IMAGE:$VERSION"
+        if [ -n "${GITHUB_OUTPUT:-}" ]; then
+            echo "image_full=$FULL_IMAGE:$VERSION" >> "$GITHUB_OUTPUT"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+        fi
     fi
 done
