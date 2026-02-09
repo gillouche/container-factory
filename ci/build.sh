@@ -86,6 +86,9 @@ for VERSION in $VARIANTS; do
     # 0. Revision Check (Idempotency)
     # If the image source hasn't changed, skip everything (unless scheduled build)
     GIT_REV=$(git log -1 --format=%H "images/$IMAGE_NAME")
+    GIT_DATE=$(git log -1 --format=%ct "images/$IMAGE_NAME")
+    BUILD_DATE=$(date -u -d "@$GIT_DATE" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -r "$GIT_DATE" +%Y-%m-%dT%H:%M:%SZ)
+
     if command -v crane &> /dev/null; then
         # Try to fetch remote config
         REMOTE_REV=$(crane config "$FULL_IMAGE:$VERSION" 2>/dev/null | jq -r '.config.Labels["org.opencontainers.image.revision"]' || true)
@@ -204,10 +207,6 @@ for VERSION in $VARIANTS; do
     BUILD_CMD=(docker buildx build)
     BUILD_CMD+=(--build-arg VERSION="$VERSION")
     BUILD_CMD+=(--build-arg SOURCE_DATE_EPOCH="$GIT_DATE")
-    # Use Git commit timestamp/revision of the image directory for reproducible builds
-    GIT_DATE=$(git log -1 --format=%ct "images/$IMAGE_NAME")
-    BUILD_DATE=$(date -u -d "@$GIT_DATE" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -r "$GIT_DATE" +%Y-%m-%dT%H:%M:%SZ)
-    GIT_REV=$(git log -1 --format=%H "images/$IMAGE_NAME")
     
     BUILD_CMD+=(--label "org.opencontainers.image.created=$BUILD_DATE")
     BUILD_CMD+=(--label "org.opencontainers.image.revision=$GIT_REV")
