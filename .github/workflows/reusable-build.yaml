@@ -38,12 +38,36 @@ jobs:
       - name: Setup temporary Nexus CA (Bootstrap)
         shell: bash
         run: |
+          # 1. Update Runner shell trust (for Nix/Curl)
           sudo mkdir -p /usr/local/share/ca-certificates
           sudo cp images/actions-runner-homelab-nix/nexus-ca.crt /usr/local/share/ca-certificates/nexus-ca.crt
+          
           if command -v trust >/dev/null; then
             sudo trust anchor /usr/local/share/ca-certificates/nexus-ca.crt
-          else
+            echo "Updated trust using 'trust anchor'"
+          elif command -v update-ca-certificates >/dev/null; then
             sudo update-ca-certificates
+            echo "Updated trust using 'update-ca-certificates'"
+          else
+            echo "Warning: No CA update tool found, falling back to manual append for runner"
+            for bundle in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/ca-bundle.pem /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem; do
+              if [ -f "$bundle" ]; then
+                sudo tee -a "$bundle" < images/actions-runner-homelab-nix/nexus-ca.crt > /dev/null
+                echo "Appended to $bundle"
+              fi
+            done
+          fi
+
+          # 2. Update Docker Daemon trust (for docker login/push)
+          # The runner and dind share the 'dind-externals' volume at /home/runner/externals
+          if [ -d "/home/runner/externals" ]; then
+            cp images/actions-runner-homelab-nix/nexus-ca.crt /home/runner/externals/nexus-ca.crt
+            # Use a dummy container to move the cert into the daemon's certs.d directory
+            docker run --rm \
+              -v /etc/docker/certs.d:/certs \
+              -v /home/runner/externals:/ext \
+              busybox sh -c "mkdir -p /certs/nexus.gillouche.homelab && cp /ext/nexus-ca.crt /certs/nexus.gillouche.homelab/ca.crt"
+            echo "Injected CA into Docker Daemon certificate store"
           fi
 
       - name: Build and Push
