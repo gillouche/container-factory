@@ -59,16 +59,11 @@ jobs:
           fi
 
           # 2. Update Docker Daemon trust (for docker login/push)
-          # The runner and dind share the 'dind-externals' volume at /home/runner/externals
-          if [ -d "/home/runner/externals" ]; then
-            cp images/actions-runner-homelab-nix/nexus-ca.crt /home/runner/externals/nexus-ca.crt
-            # Use a dummy container to move the cert into the daemon's certs.d directory
-            docker run --rm \
-              -v /etc/docker/certs.d:/certs \
-              -v /home/runner/externals:/ext \
-              busybox sh -c "mkdir -p /certs/nexus.gillouche.homelab && cp /ext/nexus-ca.crt /certs/nexus.gillouche.homelab/ca.crt"
-            echo "Injected CA into Docker Daemon certificate store"
-          fi
+          # We pipe the certificate directly to a container to avoid volume mount issues between runner and dind
+          cat images/actions-runner-homelab-nix/nexus-ca.crt | docker run --rm -i \
+            -v /etc/docker/certs.d:/certs \
+            busybox sh -c "mkdir -p /certs/nexus.gillouche.homelab && cat > /certs/nexus.gillouche.homelab/ca.crt"
+          echo "Injected CA into Docker Daemon certificate store"
 
       - name: Build and Push
         id: build
