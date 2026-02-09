@@ -50,16 +50,32 @@ jobs:
                       f.write(f"{var}={val}\n")
 
       - name: Login to Nexus
-        run: echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
+        run: |
+          { set +x; } 2>/dev/null
+          echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
 
       - name: Install Nexus CA on Host
         run: |
+          { set +x; } 2>/dev/null
           sudo mkdir -p /usr/local/share/ca-certificates
           sudo cp nexus-ca.crt /usr/local/share/ca-certificates/nexus-ca.crt
-          sudo update-ca-certificates
+          if command -v update-ca-certificates >/dev/null; then
+            sudo update-ca-certificates
+          elif command -v update-ca-trust >/dev/null; then
+            sudo update-ca-trust extract
+          else
+            # Manual append to common trust store bundles as fallback
+            for bundle in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/ca-bundle.pem; do
+              if [ -f "$bundle" ]; then
+                sudo sh -c "cat nexus-ca.crt >> $bundle"
+                echo "Appended to $bundle"
+              fi
+            done
+          fi
 
       - name: Setup Buildx with CA
         run: |
+          { set +x; } 2>/dev/null
           CERT_PATH="${{ github.workspace }}/nexus-ca.crt"
           
           # 1. Create builder with default config
@@ -79,12 +95,14 @@ jobs:
           
           docker cp "$CERT_PATH" "$CONTAINER_NAME":/usr/local/share/ca-certificates/nexus-ca.crt
           
-          # Update CA store
+          # Update CA store inside builder
           if docker exec "$CONTAINER_NAME" sh -c "command -v update-ca-certificates >/dev/null"; then
             docker exec "$CONTAINER_NAME" update-ca-certificates
+          elif docker exec "$CONTAINER_NAME" sh -c "command -v update-ca-trust >/dev/null"; then
+            docker exec "$CONTAINER_NAME" update-ca-trust extract
           else
-            # Fallback for minimal images: append to bundle
-            docker exec "$CONTAINER_NAME" sh -c "cat /usr/local/share/ca-certificates/nexus-ca.crt >> /etc/ssl/certs/ca-certificates.crt"
+            # Fallback for minimal images: append to common bundles
+            docker exec "$CONTAINER_NAME" sh -c "for b in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt; do [ -f \$b ] && cat /usr/local/share/ca-certificates/nexus-ca.crt >> \$b && echo Updated \$b; done"
           fi
           
           # 3. Restart buildkit to pick up new root CAs
@@ -101,6 +119,7 @@ jobs:
       - name: Build and Push
         id: build
         run: |
+          { set +x; } 2>/dev/null
           nix develop \
             --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
             --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
@@ -110,9 +129,6 @@ jobs:
           NEXUS_NAMESPACE: docker-hosted
           PUSH_IMAGES: ${{ inputs.push }}
           SCAN_IMAGES: true
-          # Webhooks are picked up from env by the script if exported or passed explicitly?
-          # ci/build.sh line 114: DISCORD_WEBHOOK="$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" ...
-          # So we need them in env. We set them in "Load Runner Secrets".
 
       - name: Trivy Scan
         uses: gillouche/homelab-ci/actions/trivy-scan@main
