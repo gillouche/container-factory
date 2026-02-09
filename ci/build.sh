@@ -188,6 +188,7 @@ for VERSION in $VARIANTS; do
     if [ "$PUSH_IMAGES" = "true" ]; then
         BUILD_CMD+=(--platform "$PLATFORMS")
         BUILD_CMD+=(--push)
+        BUILD_CMD+=(--allow security.insecure)
         BUILD_CMD+=(--sbom=true)
         BUILD_CMD+=(--provenance=true)
         BUILD_CMD+=(--cache-from "type=registry,ref=$CACHE_IMAGE:$VERSION")
@@ -195,6 +196,7 @@ for VERSION in $VARIANTS; do
     else
         # Single-platform build loaded into local daemon for validation
         BUILD_CMD+=(--load)
+        BUILD_CMD+=(--allow security.insecure)
         echo "Local build (single-platform, loaded into local daemon)"
     fi
 

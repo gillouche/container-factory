@@ -49,6 +49,7 @@ jobs:
             --name container-factory-builder \
             --driver docker-container \
             --driver-opt network=host \
+            --buildkitd-flags '--allow-insecure-entitlement security.insecure' \
             --bootstrap \
             --use
           
