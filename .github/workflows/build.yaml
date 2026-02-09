@@ -96,6 +96,7 @@ jobs:
       image: ${{ matrix.image }}
       version: ${{ matrix.version }}
       push: ${{ needs.prepare.outputs.push == 'true' }}
+    secrets: inherit
 
   build-level-2:
     name: Build L2
@@ -112,6 +113,7 @@ jobs:
       image: ${{ matrix.image }}
       version: ${{ matrix.version }}
       push: ${{ needs.prepare.outputs.push == 'true' }}
+    secrets: inherit
 
   notify-completion:
     name: Notify Completion
