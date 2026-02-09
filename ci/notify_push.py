@@ -24,12 +24,15 @@ def main():
     # e.g. "New Image Pushed: docker-hosted/base/arc-runner:2.331.0"
     #      "Digest: sha256:..."
     
+    # Truncate digest if it's a huge dump (safeguard)
+    if len(digest) > 120:
+        digest = digest[:100] + "... (truncated)"
+
     content = (
         f"**New Image Pushed**\n"
         f"**Image:** `{image_name}`\n"
         f"**Tag:** `{tags}`\n"
-        f"**Digest:** `{digest}`\n"
-        f"\nUpdate your manifests to use this secure pinning!"
+        f"**Digest:** `{digest}`"
     )
 
     message = {

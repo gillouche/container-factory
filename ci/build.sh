@@ -181,8 +181,13 @@ for VERSION in $VARIANTS; do
     # Construct Build Command
     BUILD_CMD=(docker buildx build)
     BUILD_CMD+=(--build-arg VERSION="$VERSION")
-    BUILD_CMD+=(--label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)")
-    BUILD_CMD+=(--label "org.opencontainers.image.revision=$(git rev-parse HEAD)")
+    # Use Git commit timestamp/revision of the image directory for reproducible builds
+    GIT_DATE=$(git log -1 --format=%ct "images/$IMAGE_NAME")
+    BUILD_DATE=$(date -u -d "@$GIT_DATE" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -r "$GIT_DATE" +%Y-%m-%dT%H:%M:%SZ)
+    GIT_REV=$(git log -1 --format=%H "images/$IMAGE_NAME")
+    
+    BUILD_CMD+=(--label "org.opencontainers.image.created=$BUILD_DATE")
+    BUILD_CMD+=(--label "org.opencontainers.image.revision=$GIT_REV")
     BUILD_CMD+=(--tag "$FULL_IMAGE:$VERSION")
 
     # Only tag the highest version as "latest"
