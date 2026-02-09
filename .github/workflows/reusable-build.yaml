@@ -83,13 +83,7 @@ jobs:
       - name: Setup Nix Environment
         uses: ./.github/actions/setup-nix-env
 
-      - name: Send Start Notification
-        uses: gillouche/homelab-ci/actions/discord-notify@main
-        with:
-          webhook: ${{ env.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
-          status: info
-          title: CI Pipeline
-          message: "Build started for ${{ inputs.image }}:${{ inputs.version }} (commit ${{ github.sha }})"
+
 
       - name: Build and Push
         run: |
@@ -106,20 +100,6 @@ jobs:
           # ci/build.sh line 114: DISCORD_WEBHOOK="$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" ...
           # So we need them in env. We set them in "Load Runner Secrets".
 
-      - name: Send Success Notification
-        if: success()
-        uses: gillouche/homelab-ci/actions/discord-notify@main
-        with:
-          webhook: ${{ env.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
-          status: success
-          title: CI Pipeline
-          message: "Build completed successfully for ${{ inputs.image }}:${{ inputs.version }}"
 
-      - name: Send Failure Notification
-        if: failure()
-        uses: gillouche/homelab-ci/actions/discord-notify@main
-        with:
-          webhook: ${{ env.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
-          status: failure
-          title: CI Pipeline
-          message: "Build failed for ${{ inputs.image }}:${{ inputs.version }}"
+
+

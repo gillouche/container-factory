@@ -1,14 +1,11 @@
 ARG VERSION=2.331.0
 
-# FROM nexus.gillouche.homelab/docker-hosted/base/actions-runner:${VERSION}
-FROM ghcr.io/actions/actions-runner:${VERSION}@sha256:dced476aa42703ebd9aafc295ce52f160989c4528e831fc3be2aef83a1b3f6da
+FROM nexus.gillouche.homelab/docker-hosted/base/actions-runner:${VERSION}
 
 # Switch to root to configure Nix
 USER root
 
-# Install xz (needed by Nix installer, not present in upstream image)
-# TODO: Remove this once we actions-runner is pushed to nexus.gillouche.homelab/docker-hosted/base/actions-runner
-RUN apt-get update && apt-get install -y --no-install-recommends xz-utils && rm -rf /var/lib/apt/lists/*
+RUN apk update && apk add --no-cache xz
 
 # Create /nix directory and give ownership to runner
 RUN mkdir -m 0755 /nix && chown runner:runner /nix
@@ -23,7 +20,8 @@ USER runner
 ARG NIX_VERSION=2.33.2
 SHELL ["/bin/bash", "-c"]
 
-RUN curl --proto '=https' --tlsv1.2 -sSf -L \
+RUN export NIX_CONFIG="filter-syscalls = false" && \
+    curl --proto '=https' --tlsv1.2 -sSf -L \
     "https://releases.nixos.org/nix/nix-${NIX_VERSION}/install" \
     | sh -s -- --no-daemon && \
     export PATH="${HOME}/.nix-profile/bin:$PATH" && \

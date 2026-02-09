@@ -35,6 +35,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      
+      - name: Load Runner Secrets
+        run: echo "DISCORD_WEBHOOK_GITHUB_ACTIONS=$DISCORD_WEBHOOK_GITHUB_ACTIONS" >> $GITHUB_ENV
+
+      - name: Send Start Notification
+        continue-on-error: true
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          webhook: ${{ env.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
+          status: info
+          title: CI Pipeline Started
+          message: "Building images (commit ${{ github.sha }})"
 
       - name: Setup Nix Environment
         uses: ./.github/actions/setup-nix-env
@@ -93,4 +105,42 @@ jobs:
       image: ${{ matrix.image }}
       version: ${{ matrix.version }}
       push: ${{ needs.prepare.outputs.push == 'true' }}
+
+  notify-completion:
+    name: Notify Completion
+    runs-on: container-factory-runner
+    if: always()
+    needs: [prepare, build-level-1, build-level-2]
+    steps:
+      - name: Load Runner Secrets
+        run: echo "DISCORD_WEBHOOK_GITHUB_ACTIONS=$DISCORD_WEBHOOK_GITHUB_ACTIONS" >> $GITHUB_ENV
+
+      - name: Determine Status
+        id: status
+        run: |
+          STATUS="success"
+          MESSAGE="CI Pipeline Completed Successfully"
+
+          if [[ "${{ needs.prepare.result }}" == "failure" || "${{ needs.prepare.result }}" == "cancelled" ]]; then
+            STATUS="failure"
+            MESSAGE="CI Pipeline Failed (Prepare)"
+          elif [[ "${{ needs.build-level-1.result }}" == "failure" || "${{ needs.build-level-1.result }}" == "cancelled" ]]; then
+            STATUS="failure"
+            MESSAGE="CI Pipeline Failed (Level 1)"
+          elif [[ "${{ needs.build-level-2.result }}" == "failure" || "${{ needs.build-level-2.result }}" == "cancelled" ]]; then
+            STATUS="failure"
+            MESSAGE="CI Pipeline Failed (Level 2)"
+          fi
+
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "message=$MESSAGE" >> $GITHUB_OUTPUT
+
+      - name: Send Completion Notification
+        continue-on-error: true
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          webhook: ${{ env.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
+          status: ${{ steps.status.outputs.status }}
+          title: CI Pipeline
+          message: ${{ steps.status.outputs.message }}
 
