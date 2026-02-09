@@ -44,35 +44,35 @@ jobs:
         run: |
           CERT_PATH="${{ github.workspace }}/nexus-ca.crt"
           
-          # Create buildkitd config referencing the cert inside container
+          # 1. Create builder with default config first to ensure container starts
+          docker buildx create \
+            --name container-factory-builder \
+            --driver docker-container \
+            --driver-opt network=host \
+            --bootstrap \
+            --use
+          
+          # 2. Inject certificate and config into the running builder container
+          CONTAINER_NAME="buildx_buildkit_container-factory-builder0"
+          
+          # Create certs directory
+          docker exec "$CONTAINER_NAME" mkdir -p /certs
+          docker cp "$CERT_PATH" "$CONTAINER_NAME":/certs/nexus-ca.crt
+          
+          # Create custom config inside container
+          # We can write it locally then copy it, or overwrite /etc/buildkit/buildkitd.toml
           cat > /tmp/buildkitd.toml << EOF
           [registry."nexus.gillouche.homelab"]
             ca=["/certs/nexus-ca.crt"]
           EOF
           
-          # Create builder instance
-          docker buildx create \
-            --name container-factory-builder \
-            --driver docker-container \
-            --driver-opt network=host \
-            --driver-opt "env.SSL_CERT_DIR=/certs" \
-            --config /tmp/buildkitd.toml \
-            --bootstrap \
-            --use
+          docker cp /tmp/buildkitd.toml "$CONTAINER_NAME":/etc/buildkit/buildkitd.toml
           
-          # Inject certificate into the running builder container
-          CONTAINER_NAME="buildx_buildkit_container-factory-builder0"
-          docker exec "$CONTAINER_NAME" mkdir -p /certs
-          docker cp "$CERT_PATH" "$CONTAINER_NAME":/certs/nexus-ca.crt
-          
-          # Restart buildkit to pick up certs if needed (though config is loaded on start, cert file presence matters)
-          # Actually buildkitd might need restart if it reads config at startup and fails?
-          # But config points to a file. If file appears, does it work?
-          # Buildkit might lazy load?
-          # To be safe, restart the container
+          # 3. Restart buildkit to pick up new config and certs
           docker restart "$CONTAINER_NAME"
           
-          # Wait for it to be ready
+          # 4. Wait for it to be ready
+          # inspect --bootstrap will wait for the builder to be responsive
           docker buildx inspect --bootstrap
 
       - name: Setup Nix Environment
