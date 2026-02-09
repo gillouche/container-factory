@@ -35,6 +35,17 @@ jobs:
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
+      - name: Setup temporary Nexus CA (Bootstrap)
+        shell: bash
+        run: |
+          sudo mkdir -p /usr/local/share/ca-certificates
+          sudo cp images/actions-runner-homelab-nix/nexus-ca.crt /usr/local/share/ca-certificates/nexus-ca.crt
+          if command -v trust >/dev/null; then
+            sudo trust anchor /usr/local/share/ca-certificates/nexus-ca.crt
+          else
+            sudo update-ca-certificates
+          fi
+
       - name: Build and Push
         id: build
         run: |
