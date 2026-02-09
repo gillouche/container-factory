@@ -230,7 +230,12 @@ for VERSION in $VARIANTS; do
 
         # Send Discord Notification
         # Retrieve Digest from imagetools (more reliable than build output)
-        DIGEST=$(docker buildx imagetools inspect "$FULL_IMAGE:$VERSION" --format "{{ .Manifest.Digest }}")
+        if command -v crane &> /dev/null; then
+            DIGEST=$(crane digest "$FULL_IMAGE:$VERSION")
+        else
+            # Fallback (may be verbose or unreliable for multi-arch index)
+            DIGEST=$(docker buildx imagetools inspect "$FULL_IMAGE:$VERSION" | grep "Digest:" | head -n 1 | awk '{print $2}')
+        fi
         echo "Image Digest: $DIGEST"
         
         # Only notify if we pushed a new image (which we did if we are here)
