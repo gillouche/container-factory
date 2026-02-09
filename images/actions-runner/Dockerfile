@@ -68,7 +68,7 @@ RUN apk update && apk add --no-cache \
     unzip \
     python-3.14 \
     py3.14-pip \
-    sudo \
+    sudo
 
 RUN addgroup -S runner -g ${RUNNER_GID} \
     && (addgroup -S docker -g ${DOCKER_GID} || addgroup -S docker) \
