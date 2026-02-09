@@ -7,8 +7,11 @@ EXPECTED_VERSION=${2:-}
 echo "Running ARC runner smoke test against $LOCAL_TAG..."
 
 # Helper to run arbitrary commands inside the container by overriding entrypoint
+PLATFORM=${TEST_PLATFORM:-amd64}
+
+# Helper to run arbitrary commands inside the container by overriding entrypoint
 run_cmd() {
-    docker run --rm --entrypoint /bin/bash "$LOCAL_TAG" -c "$@"
+    docker run --rm --platform "linux/${PLATFORM}" --entrypoint /bin/bash "$LOCAL_TAG" -c "$@"
 }
 
 # Test: non-root user

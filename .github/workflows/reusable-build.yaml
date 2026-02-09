@@ -35,11 +35,45 @@ jobs:
       - name: Login to Nexus
         run: echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
 
-      - name: Setup Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-        with:
-          driver: docker-container
-          endpoint: unix:///var/run/docker.sock
+      - name: Install Nexus CA on Host
+        run: |
+          sudo cp nexus-ca.crt /usr/local/share/ca-certificates/nexus-ca.crt
+          sudo update-ca-certificates
+
+      - name: Setup Buildx with CA
+        run: |
+          CERT_PATH="${{ github.workspace }}/nexus-ca.crt"
+          
+          # Create buildkitd config referencing the cert inside container
+          cat > /tmp/buildkitd.toml << EOF
+          [registry."nexus.gillouche.homelab"]
+            ca=["/certs/nexus-ca.crt"]
+          EOF
+          
+          # Create builder instance
+          docker buildx create \
+            --name container-factory-builder \
+            --driver docker-container \
+            --driver-opt network=host \
+            --driver-opt "env.SSL_CERT_DIR=/certs" \
+            --config /tmp/buildkitd.toml \
+            --bootstrap \
+            --use
+          
+          # Inject certificate into the running builder container
+          CONTAINER_NAME="buildx_buildkit_container-factory-builder0"
+          docker exec "$CONTAINER_NAME" mkdir -p /certs
+          docker cp "$CERT_PATH" "$CONTAINER_NAME":/certs/nexus-ca.crt
+          
+          # Restart buildkit to pick up certs if needed (though config is loaded on start, cert file presence matters)
+          # Actually buildkitd might need restart if it reads config at startup and fails?
+          # But config points to a file. If file appears, does it work?
+          # Buildkit might lazy load?
+          # To be safe, restart the container
+          docker restart "$CONTAINER_NAME"
+          
+          # Wait for it to be ready
+          docker buildx inspect --bootstrap
 
       - name: Setup Nix Environment
         uses: ./.github/actions/setup-nix-env
