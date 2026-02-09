@@ -67,12 +67,14 @@ RUN apk update && apk add --no-cache \
     zip \
     unzip \
     python-3.14 \
-    py3.14-pip
+    py3.14-pip \
+    sudo \
 
 RUN addgroup -S runner -g ${RUNNER_GID} \
     && (addgroup -S docker -g ${DOCKER_GID} || addgroup -S docker) \
     && adduser -S -G runner -u ${RUNNER_UID} runner \
-    && addgroup runner docker
+    && addgroup runner docker \
+    && echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 RUN if [ ! -e /usr/bin/python3 ]; then ln -s /usr/bin/python3.14 /usr/bin/python3; fi
 

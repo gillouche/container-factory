@@ -36,6 +36,11 @@ jobs:
           path: .homelab-ci
       - name: Load Runner Secrets
         run: |
+          echo "::add-mask::$DISCORD_WEBHOOK_GITHUB_ACTIONS"
+          echo "::add-mask::$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS"
+          echo "::add-mask::$NIX_ACCESS_KEY_ID"
+          echo "::add-mask::$NIX_SECRET_ACCESS_KEY"
+          
           echo "DISCORD_WEBHOOK_GITHUB_ACTIONS=$DISCORD_WEBHOOK_GITHUB_ACTIONS" >> $GITHUB_ENV
           echo "DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS=$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" >> $GITHUB_ENV
           echo "NEXUS_USERNAME=$NEXUS_USERNAME" >> $GITHUB_ENV
