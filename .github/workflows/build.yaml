@@ -37,13 +37,13 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       
       - name: Load Runner Secrets
-        run: echo "DISCORD_WEBHOOK_GITHUB_ACTIONS=$DISCORD_WEBHOOK_GITHUB_ACTIONS" >> $GITHUB_ENV
+        run: echo "DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS=$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" >> $GITHUB_ENV
 
       - name: Send Start Notification
         continue-on-error: true
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
-          webhook: ${{ env.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
+          webhook: ${{ env.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
           status: info
           title: CI Pipeline Started
           message: "Building images (commit ${{ github.sha }})"
@@ -113,7 +113,7 @@ jobs:
     needs: [prepare, build-level-1, build-level-2]
     steps:
       - name: Load Runner Secrets
-        run: echo "DISCORD_WEBHOOK_GITHUB_ACTIONS=$DISCORD_WEBHOOK_GITHUB_ACTIONS" >> $GITHUB_ENV
+        run: echo "DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS=$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" >> $GITHUB_ENV
 
       - name: Determine Status
         id: status
@@ -139,7 +139,7 @@ jobs:
         continue-on-error: true
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
-          webhook: ${{ env.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
+          webhook: ${{ env.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
           status: ${{ steps.status.outputs.status }}
           title: CI Pipeline
           message: ${{ steps.status.outputs.message }}

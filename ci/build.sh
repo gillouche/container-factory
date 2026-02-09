@@ -82,6 +82,23 @@ for VERSION in $VARIANTS; do
     echo "Push Enabled: $PUSH_IMAGES"
     echo "Scan Enabled: $SCAN_IMAGES"
     echo "=================================================="
+    
+    # 0. Revision Check (Idempotency)
+    # If the image source hasn't changed, skip everything (unless scheduled build)
+    GIT_REV=$(git log -1 --format=%H "images/$IMAGE_NAME")
+    if command -v crane &> /dev/null; then
+        # Try to fetch remote config
+        REMOTE_REV=$(crane config "$FULL_IMAGE:$VERSION" 2>/dev/null | jq -r '.config.Labels["org.opencontainers.image.revision"]' || true)
+        
+        echo "Local Revision: $GIT_REV"
+        echo "Remote Revision: $REMOTE_REV"
+
+        # Check matching revision
+        if [ "$REMOTE_REV" = "$GIT_REV" ] && [ "${GITHUB_EVENT_NAME:-}" != "schedule" ]; then
+             echo "Skipping $FULL_IMAGE:$VERSION (Revision Match). No changes detected."
+             continue
+        fi
+    fi
 
     # ---------------------------------------------------------
     # 1. Pre-flight Verification (Scan + Smoke Test)
@@ -97,6 +114,7 @@ for VERSION in $VARIANTS; do
             --load \
             --platform linux/amd64 \
             --build-arg VERSION="$VERSION" \
+            --build-arg SOURCE_DATE_EPOCH="$GIT_DATE" \
             --tag "$LOCAL_TAG" \
             --file "images/$IMAGE_NAME/Dockerfile" \
             "images/$IMAGE_NAME"
@@ -185,6 +203,7 @@ for VERSION in $VARIANTS; do
     # Construct Build Command
     BUILD_CMD=(docker buildx build)
     BUILD_CMD+=(--build-arg VERSION="$VERSION")
+    BUILD_CMD+=(--build-arg SOURCE_DATE_EPOCH="$GIT_DATE")
     # Use Git commit timestamp/revision of the image directory for reproducible builds
     GIT_DATE=$(git log -1 --format=%ct "images/$IMAGE_NAME")
     BUILD_DATE=$(date -u -d "@$GIT_DATE" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -r "$GIT_DATE" +%Y-%m-%dT%H:%M:%SZ)
@@ -246,7 +265,7 @@ for VERSION in $VARIANTS; do
 
         # Send Discord Notification
         # Only notify if we pushed a new image (which we did if we are here)
-        DISCORD_WEBHOOK="$DISCORD_WEBHOOK_GITHUB_ACTIONS" python3 ci/notify_push.py "$FULL_IMAGE" "$VERSION" "$DIGEST"
+        DISCORD_WEBHOOK="$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" python3 ci/notify_push.py "$FULL_IMAGE" "$VERSION" "$DIGEST"
     else
         echo "Build Successful. Would have pushed: $FULL_IMAGE:$VERSION"
     fi
