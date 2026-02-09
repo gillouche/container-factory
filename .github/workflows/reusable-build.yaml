@@ -72,10 +72,7 @@ jobs:
           # Login to Nexus first
           echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
 
-          nix develop \
-            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
-            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./#default --command ./ci/build.sh "${{ inputs.image }}" "${{ inputs.version }}"
+          nix develop ./#default --command ./ci/build.sh "${{ inputs.image }}" "${{ inputs.version }}"
         env:
           NEXUS_REGISTRY: nexus.gillouche.homelab
           NEXUS_NAMESPACE: docker-hosted

@@ -65,7 +65,7 @@ fi
 if ! docker buildx inspect > /dev/null 2>&1; then
     echo "No active builder found. Creating 'homelab-builder'..."
     if ! docker buildx inspect homelab-builder > /dev/null 2>&1; then
-        docker buildx create --name homelab-builder --driver docker-container
+        docker buildx create --name homelab-builder --driver docker-container --buildkitd-flags '--allow-insecure-entitlement security.insecure'
     fi
     docker buildx use homelab-builder
     docker buildx inspect --bootstrap
@@ -183,7 +183,6 @@ for VERSION in $VARIANTS; do
     if [ "$PUSH_IMAGES" = "true" ] && [ "$PUSH_NECESSARY" = "true" ]; then
         BUILD_CMD+=(--platform "$PLATFORMS")
         BUILD_CMD+=(--push)
-        BUILD_CMD+=(--allow security.insecure)
         BUILD_CMD+=(--sbom=true)
         BUILD_CMD+=(--provenance=true)
         BUILD_CMD+=(--cache-from "type=registry,ref=$CACHE_IMAGE:$VERSION")
