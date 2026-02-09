@@ -61,9 +61,10 @@ jobs:
 
           # 2. Update Docker Daemon trust (for docker login/push)
           # We pipe the certificate directly to a container to avoid volume mount issues between runner and dind
+          # We use the local Nexus proxy to avoid Docker Hub rate limits
           cat images/actions-runner-homelab-nix/nexus-ca.crt | docker run --rm -i \
             -v /etc/docker/certs.d:/certs \
-            busybox sh -c "mkdir -p /certs/nexus.gillouche.homelab && cat > /certs/nexus.gillouche.homelab/ca.crt"
+            nexus.gillouche.homelab/docker-hub/busybox:latest sh -c "mkdir -p /certs/nexus.gillouche.homelab && cat > /certs/nexus.gillouche.homelab/ca.crt"
           echo "Injected CA into Docker Daemon certificate store"
 
       - name: Build and Push

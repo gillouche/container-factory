@@ -1,6 +1,5 @@
 ARG VERSION=3.13
-
-FROM python:${VERSION}-slim-trixie AS donor
+FROM nexus.gillouche.homelab/docker-hub/python:${VERSION}-slim-trixie AS donor
 
 # Upgrade to patch known CVEs in bundled pip/setuptools/wheel
 # hadolint ignore=DL3013
