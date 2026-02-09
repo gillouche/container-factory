@@ -2,12 +2,16 @@ ARG VERSION=2.331.0
 
 FROM nexus.gillouche.homelab/docker-hosted/base/actions-runner:${VERSION}
 
-# Switch to root to configure Nix
+# Switch to root to configure Nix and CA certificates
 USER root
 
-RUN apk update && apk add --no-cache xz coreutils
+RUN apk update && apk add --no-cache xz coreutils ca-certificates
 
-# Create /nix directory and give ownership to runner
+# 1. Install Nexus CA certificate
+COPY nexus-ca.crt /usr/local/share/ca-certificates/nexus-ca.crt
+RUN trust anchor /usr/local/share/ca-certificates/nexus-ca.crt || update-ca-certificates
+
+# 2. Create /nix directory and give ownership to runner
 RUN mkdir -m 0755 /nix && chown runner:runner /nix
 
 # Use ENV HOME so PATH and config paths stay correct

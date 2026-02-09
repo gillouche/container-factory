@@ -29,97 +29,19 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - name: Mask and Load Runner Secrets
-        shell: python
-        run: |
-          import os
-          # Variables to mask and make available to workflow steps
-          vars = [
-              "DISCORD_WEBHOOK_GITHUB_ACTIONS", 
-              "DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS",
-              "NIX_ACCESS_KEY_ID",
-              "NIX_SECRET_ACCESS_KEY",
-              "NEXUS_USERNAME",
-              "NEXUS_PASSWORD"
-          ]
-          with open(os.environ["GITHUB_ENV"], "a") as f:
-              for var in vars:
-                  val = os.environ.get(var)
-                  if val:
-                      print(f"::add-mask::{val}")
-                      f.write(f"{var}={val}\n")
-
-      - name: Login to Nexus
-        run: |
-          { set +x; } 2>/dev/null
-          echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
-
-      - name: Install Nexus CA on Host
-        run: |
-          { set +x; } 2>/dev/null
-          sudo mkdir -p /usr/local/share/ca-certificates
-          sudo cp nexus-ca.crt /usr/local/share/ca-certificates/nexus-ca.crt
-          if command -v update-ca-certificates >/dev/null; then
-            sudo update-ca-certificates
-          elif command -v update-ca-trust >/dev/null; then
-            sudo update-ca-trust extract
-          else
-            # Manual append to common trust store bundles as fallback
-            for bundle in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/ca-bundle.pem; do
-              if [ -f "$bundle" ]; then
-                sudo sh -c "cat nexus-ca.crt >> $bundle"
-                echo "Appended to $bundle"
-              fi
-            done
-          fi
-
-      - name: Setup Buildx with CA
-        run: |
-          { set +x; } 2>/dev/null
-          CERT_PATH="${{ github.workspace }}/nexus-ca.crt"
-          
-          # 1. Create builder with default config
-          docker buildx create \
-            --name container-factory-builder \
-            --driver docker-container \
-            --driver-opt network=host \
-            --buildkitd-flags '--allow-insecure-entitlement security.insecure' \
-            --bootstrap \
-            --use
-          
-          # 2. Inject certificate into the running builder container system trust store
-          CONTAINER_NAME="buildx_buildkit_container-factory-builder0"
-          
-          # Ensure target directory exists (Alpine/Debian compatible path)
-          docker exec "$CONTAINER_NAME" mkdir -p /usr/local/share/ca-certificates
-          
-          docker cp "$CERT_PATH" "$CONTAINER_NAME":/usr/local/share/ca-certificates/nexus-ca.crt
-          
-          # Update CA store inside builder
-          if docker exec "$CONTAINER_NAME" sh -c "command -v update-ca-certificates >/dev/null"; then
-            docker exec "$CONTAINER_NAME" update-ca-certificates
-          elif docker exec "$CONTAINER_NAME" sh -c "command -v update-ca-trust >/dev/null"; then
-            docker exec "$CONTAINER_NAME" update-ca-trust extract
-          else
-            # Fallback for minimal images: append to common bundles
-            docker exec "$CONTAINER_NAME" sh -c "for b in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt; do [ -f \$b ] && cat /usr/local/share/ca-certificates/nexus-ca.crt >> \$b && echo Updated \$b; done"
-          fi
-          
-          # 3. Restart buildkit to pick up new root CAs
-          docker restart "$CONTAINER_NAME"
-          
-          # 4. Wait for it to be ready
-          docker buildx inspect --bootstrap
-
       - name: Setup Nix Environment
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
-
-
+        with:
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Build and Push
         id: build
         run: |
           { set +x; } 2>/dev/null
+          # Login to Nexus first
+          echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
+
           nix develop \
             --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
             --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
@@ -129,19 +51,23 @@ jobs:
           NEXUS_NAMESPACE: docker-hosted
           PUSH_IMAGES: ${{ inputs.push }}
           SCAN_IMAGES: true
+          NIX_ACCESS_KEY_ID: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          NIX_SECRET_ACCESS_KEY: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
 
       - name: Trivy Scan
         uses: gillouche/homelab-ci/actions/trivy-scan@main
         with:
           image: ${{ steps.build.outputs.image_full }}
           trivyignore: images/${{ inputs.image }}/.trivyignore
-          discord-webhook: ${{ env.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
 
       - name: Push Notification
         if: steps.build.outputs.pushed == 'true'
         uses: gillouche/homelab-ci/actions/push-notify@main
         with:
-          webhook: ${{ env.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
+          webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
           image: ${{ inputs.image }}
           tag: ${{ inputs.version }}
           digest: ${{ steps.build.outputs.digest }}
