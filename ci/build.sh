@@ -91,7 +91,7 @@ for VERSION in $VARIANTS; do
 
     if command -v crane &> /dev/null; then
         # Try to fetch remote config
-        REMOTE_REV=$(crane config "$FULL_IMAGE:$VERSION" 2>/dev/null | jq -r '.config.Labels["org.opencontainers.image.revision"]' || true)
+        REMOTE_REV=$(crane config "$FULL_IMAGE:$VERSION" | jq -r '.config.Labels["org.opencontainers.image.revision"]' || true)
         
         echo "Local Revision: $GIT_REV"
         echo "Remote Revision: $REMOTE_REV"
@@ -142,7 +142,7 @@ for VERSION in $VARIANTS; do
             # Pass env vars for the script to use in Discord notifications
             # Do NOT export them globally as it overwrites script variables like IMAGE_NAME
             
-            if ! DISCORD_WEBHOOK="$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" IMAGE_NAME="$FULL_IMAGE" VERSION="$VERSION" python3 ci/check_scan_results.py "$TRIVY_JSON" "$IGNORE_FILE"; then
+            if ! python3 .homelab-ci/scripts/check_scan_results.py --results "$TRIVY_JSON" --ignore "$IGNORE_FILE" --webhook "$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" --image "$FULL_IMAGE" --version "$VERSION"; then
                 echo "Security check failed!"
                 docker rmi "$LOCAL_TAG" || true
                 exit 1
@@ -264,7 +264,7 @@ for VERSION in $VARIANTS; do
 
         # Send Discord Notification
         # Only notify if we pushed a new image (which we did if we are here)
-        DISCORD_WEBHOOK="$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS" python3 ci/notify_push.py "$FULL_IMAGE" "$VERSION" "$DIGEST"
+        python3 .homelab-ci/scripts/notify_push.py "$FULL_IMAGE" "$VERSION" "$DIGEST" --webhook "$DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS"
     else
         echo "Build Successful. Would have pushed: $FULL_IMAGE:$VERSION"
     fi
