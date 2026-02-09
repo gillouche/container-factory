@@ -51,6 +51,7 @@ jobs:
 
       - name: Install Nexus CA on Host
         run: |
+          sudo mkdir -p /usr/local/share/ca-certificates
           sudo cp nexus-ca.crt /usr/local/share/ca-certificates/nexus-ca.crt
           sudo update-ca-certificates
 
