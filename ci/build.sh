@@ -83,25 +83,25 @@ for VERSION in $VARIANTS; do
     echo "Scan Enabled: $SCAN_IMAGES"
     echo "=================================================="
     
-    # 0. Revision Check (Idempotency)
-    # If the image source hasn't changed, skip everything (unless scheduled build)
+    # 0. Revision Check (Metadata)
+    # We build every time to catch upstream updates (base image, packages).
+    # We use GIT_REV and GIT_DATE scoped to the image directory to ensure build reproducibility
+    # when only unrelated files change in the repo.
+    
     GIT_REV=$(git log -1 --format=%H "images/$IMAGE_NAME")
-    GIT_DATE=$(git log -1 --format=%ct "images/$IMAGE_NAME")
-    BUILD_DATE=$(date -u -d "@$GIT_DATE" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -r "$GIT_DATE" +%Y-%m-%dT%H:%M:%SZ)
-
-    if command -v crane &> /dev/null; then
-        # Try to fetch remote config
-        REMOTE_REV=$(crane config "$FULL_IMAGE:$VERSION" | jq -r '.config.Labels["org.opencontainers.image.revision"]' || true)
-        
-        echo "Local Revision: $GIT_REV"
-        echo "Remote Revision: $REMOTE_REV"
-
-        # Check matching revision
-        if [ "$REMOTE_REV" = "$GIT_REV" ] && [ "${GITHUB_EVENT_NAME:-}" != "schedule" ]; then
-             echo "Skipping $FULL_IMAGE:$VERSION (Revision Match). No changes detected."
-             continue
-        fi
+    # Fallback to HEAD if path history is empty (e.g. new file)
+    if [ -z "$GIT_REV" ]; then
+        GIT_REV=$(git rev-parse HEAD)
     fi
+
+    GIT_DATE=$(git log -1 --format=%ct "images/$IMAGE_NAME")
+    if [ -z "$GIT_DATE" ]; then
+        GIT_DATE=$(git log -1 --format=%ct)
+    fi
+    
+    BUILD_DATE=$(date -u -d "@$GIT_DATE" +%Y-%m-%dT%H:%M:%SZ)
+
+    echo "Building revision: $GIT_REV ($BUILD_DATE)"
 
     # ---------------------------------------------------------
     # 1. Pre-flight Verification (Scan + Smoke Test)
@@ -207,6 +207,7 @@ for VERSION in $VARIANTS; do
     BUILD_CMD=(docker buildx build)
     BUILD_CMD+=(--build-arg VERSION="$VERSION")
     BUILD_CMD+=(--build-arg SOURCE_DATE_EPOCH="$GIT_DATE")
+    BUILD_CMD+=(--build-arg PYTHONDONTWRITEBYTECODE=1)
     
     BUILD_CMD+=(--label "org.opencontainers.image.created=$BUILD_DATE")
     BUILD_CMD+=(--label "org.opencontainers.image.revision=$GIT_REV")
