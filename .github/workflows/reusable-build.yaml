@@ -44,7 +44,7 @@ jobs:
         run: |
           CERT_PATH="${{ github.workspace }}/nexus-ca.crt"
           
-          # 1. Create builder with default config first to ensure container starts
+          # 1. Create builder with default config
           docker buildx create \
             --name container-factory-builder \
             --driver docker-container \
@@ -52,27 +52,26 @@ jobs:
             --bootstrap \
             --use
           
-          # 2. Inject certificate and config into the running builder container
+          # 2. Inject certificate into the running builder container system trust store
           CONTAINER_NAME="buildx_buildkit_container-factory-builder0"
           
-          # Create certs directory
-          docker exec "$CONTAINER_NAME" mkdir -p /certs
-          docker cp "$CERT_PATH" "$CONTAINER_NAME":/certs/nexus-ca.crt
+          # Ensure target directory exists (Alpine/Debian compatible path)
+          docker exec "$CONTAINER_NAME" mkdir -p /usr/local/share/ca-certificates
           
-          # Create custom config inside container
-          # We can write it locally then copy it, or overwrite /etc/buildkit/buildkitd.toml
-          cat > /tmp/buildkitd.toml << EOF
-          [registry."nexus.gillouche.homelab"]
-            ca=["/certs/nexus-ca.crt"]
-          EOF
+          docker cp "$CERT_PATH" "$CONTAINER_NAME":/usr/local/share/ca-certificates/nexus-ca.crt
           
-          docker cp /tmp/buildkitd.toml "$CONTAINER_NAME":/etc/buildkit/buildkitd.toml
+          # Update CA store
+          if docker exec "$CONTAINER_NAME" sh -c "command -v update-ca-certificates >/dev/null"; then
+            docker exec "$CONTAINER_NAME" update-ca-certificates
+          else
+            # Fallback for minimal images: append to bundle
+            docker exec "$CONTAINER_NAME" sh -c "cat /usr/local/share/ca-certificates/nexus-ca.crt >> /etc/ssl/certs/ca-certificates.crt"
+          fi
           
-          # 3. Restart buildkit to pick up new config and certs
+          # 3. Restart buildkit to pick up new root CAs
           docker restart "$CONTAINER_NAME"
           
           # 4. Wait for it to be ready
-          # inspect --bootstrap will wait for the builder to be responsive
           docker buildx inspect --bootstrap
 
       - name: Setup Nix Environment
