@@ -61,17 +61,6 @@ if ! docker buildx version > /dev/null 2>&1; then
     exit 1
 fi
 
-# Check if a builder is already active/selected
-if ! docker buildx inspect > /dev/null 2>&1; then
-    echo "No active builder found. Creating 'homelab-builder'..."
-    if ! docker buildx inspect homelab-builder > /dev/null 2>&1; then
-        docker buildx create --name homelab-builder --driver docker-container --buildkitd-flags '--allow-insecure-entitlement security.insecure'
-    fi
-    docker buildx use homelab-builder
-    docker buildx inspect --bootstrap
-else
-    echo "Using active builder: $(docker buildx inspect --format '{{.Name}}')"
-fi
 
 # Build Loop
 for VERSION in $VARIANTS; do

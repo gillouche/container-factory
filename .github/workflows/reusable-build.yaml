@@ -35,6 +35,7 @@ jobs:
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
+
       - name: Setup temporary Nexus CA (Bootstrap)
         shell: bash
         run: |
