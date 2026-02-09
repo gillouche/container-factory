@@ -216,28 +216,26 @@ for VERSION in $VARIANTS; do
         docker buildx imagetools inspect "$FULL_IMAGE:$VERSION"
         echo "=================================================="
 
+        if command -v crane &> /dev/null; then
+            DIGEST=$(crane digest "$FULL_IMAGE:$VERSION")
+        else
+            # Fallback
+            DIGEST=$(docker buildx imagetools inspect "$FULL_IMAGE:$VERSION" | grep "Digest:" | head -n 1 | awk '{print $2}')
+        fi
+        echo "Image Digest: $DIGEST"
+
         # Sign images with cosign (keyless via OIDC in CI)
-        if command -v cosign &> /dev/null; then
-            echo "Signing $FULL_IMAGE:$VERSION with cosign..."
-            cosign sign --yes "$FULL_IMAGE:$VERSION"
-            if [ "$VERSION" = "$LATEST_VERSION" ]; then
-                cosign sign --yes "$FULL_IMAGE:latest"
-            fi
+        if [ -n "$DIGEST" ] && command -v cosign &> /dev/null; then
+            echo "Signing $FULL_IMAGE@$DIGEST with cosign..."
+            cosign sign --yes "$FULL_IMAGE@$DIGEST"
             echo "Image signed successfully."
+        elif [ -z "$DIGEST" ]; then
+             echo "Warning: Could not retrieve digest, skipping signing."
         else
             echo "Warning: cosign not found, skipping image signing."
         fi
 
         # Send Discord Notification
-        # Retrieve Digest from imagetools (more reliable than build output)
-        if command -v crane &> /dev/null; then
-            DIGEST=$(crane digest "$FULL_IMAGE:$VERSION")
-        else
-            # Fallback (may be verbose or unreliable for multi-arch index)
-            DIGEST=$(docker buildx imagetools inspect "$FULL_IMAGE:$VERSION" | grep "Digest:" | head -n 1 | awk '{print $2}')
-        fi
-        echo "Image Digest: $DIGEST"
-        
         # Only notify if we pushed a new image (which we did if we are here)
         DISCORD_WEBHOOK="$DISCORD_WEBHOOK_GITHUB_ACTIONS" python3 ci/notify_push.py "$FULL_IMAGE" "$VERSION" "$DIGEST"
     else

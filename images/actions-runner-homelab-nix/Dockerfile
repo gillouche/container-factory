@@ -5,7 +5,7 @@ FROM nexus.gillouche.homelab/docker-hosted/base/actions-runner:${VERSION}
 # Switch to root to configure Nix
 USER root
 
-RUN apk update && apk add --no-cache xz
+RUN apk update && apk add --no-cache xz coreutils
 
 # Create /nix directory and give ownership to runner
 RUN mkdir -m 0755 /nix && chown runner:runner /nix
