@@ -64,7 +64,7 @@ jobs:
           # We use the local Nexus proxy to avoid Docker Hub rate limits
           cat images/actions-runner-homelab-nix/nexus-ca.crt | docker run --rm -i \
             -v /etc/docker/certs.d:/certs \
-            docker:dind sh -c "mkdir -p /certs/nexus.gillouche.homelab && cat > /certs/nexus.gillouche.homelab/ca.crt"
+            nexus.gillouche.homelab/docker-hub/busybox:latest sh -c "mkdir -p /certs/nexus.gillouche.homelab && cat > /certs/nexus.gillouche.homelab/ca.crt"
           echo "Injected CA into Docker Daemon certificate store"
 
       - name: Build and Push
