@@ -1,0 +1,12 @@
+{
+    "images/actions-runner/VARIANTS": {
+        "source": "github_release",
+        "repo": "actions/runner",
+        "prefix": "v"
+    },
+    "images/python-distroless/VARIANTS": {
+        "source": "docker_hub",
+        "image": "library/python",
+        "tag_template": "{version}-slim-trixie"
+    }
+}

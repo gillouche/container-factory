@@ -95,6 +95,9 @@ def main():
                     # Pin unpinned Action: action@ref -> action@sha # ref
                     replacement = f"{u['action']}@{u['latest_sha']} # {u['tag']}"
                     content = content.replace(u["raw_ref"], replacement)
+                elif u["type"] == "variant_update":
+                    # Update version in VARIANTS file
+                    content = content.replace(u["current_version"], u["latest_version"])
 
             with open(filepath, "w") as f:
                 f.write(content)
@@ -148,6 +151,9 @@ def main():
             elif u["type"] == "action_unpinned":
                 lines.append(f"- **{u['action']}@{u['tag']}** in `{u['file']}` (Pinned)")
                 lines.append(f"  - `unpinned` -> `{u['latest_sha'][:12]}`")
+            elif u["type"] == "variant_update":
+                lines.append(f"- **{u['file']}** (Version Update)")
+                lines.append(f"  - `{u['current_version']}` -> `{u['latest_version']}`")
         
         lines += ["", "## Test plan", "",
                   "- [ ] Verify updated digests/SHAs resolve correctly",
