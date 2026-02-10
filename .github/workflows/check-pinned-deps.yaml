@@ -24,6 +24,8 @@ jobs:
 
       - name: Check pinned dependencies
         id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           nix develop ./#default --command python3 ci/check_pinned_deps.py > report.json
           echo "updates=$(jq '.updates | length' report.json)" >> "$GITHUB_OUTPUT"
