@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-"""Create a PR with updated pinned dependencies via the GitHub API.
+"""Create a PR with updated pinned dependencies via git CLI.
 
-Reads a report.json produced by check-pinned-deps.py, computes file replacements
-in memory, and creates/updates a PR branch entirely through the GitHub API.
-No local files are modified, no git commit/push is performed.
+Reads a report.json produced by check-pinned-deps.py, applies replacements
+to local files, commits changes, and pushes a branch to create a PR.
 
 Usage:
-    python3 ci/create-update-pr.py report.json
+    python3 ci/create_update_pr.py report.json
 
 Requires:
-    - GH_TOKEN environment variable (GitHub token with contents:write + pull-requests:write)
-    - GITHUB_REPOSITORY environment variable (owner/repo)
-    - gh CLI available in PATH
+    - GH_TOKEN environment variable (for gh pr create)
+    - GITHUB_REPOSITORY environment variable
+    - git and gh CLI available in PATH
 """
 
 import json
@@ -19,28 +18,19 @@ import os
 import subprocess
 import sys
 
-
 BRANCH = "auto-update/pinned-deps"
 BASE = "main"
 COMMIT_MSG = "chore: update pinned dependency digests/SHAs"
 
 
-def gh_api(endpoint, method="GET", input_data=None):
-    """Call the GitHub API via gh CLI."""
-    cmd = ["gh", "api"]
-    if method != "GET":
-        cmd += ["-X", method]
-    cmd.append(endpoint)
-    if input_data is not None:
-        cmd += ["--input", "-"]
-        result = subprocess.run(
-            cmd, input=json.dumps(input_data), capture_output=True, text=True
-        )
-    else:
-        result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        return None, result.stderr.strip()
-    return json.loads(result.stdout) if result.stdout.strip() else {}, None
+def run_git(args, check=True):
+    """Run a git command."""
+    cmd = ["git"] + args
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if check and result.returncode != 0:
+        print(f"Git command failed: {' '.join(cmd)}\n{result.stderr}", file=sys.stderr)
+        sys.exit(1)
+    return result
 
 
 def main():
@@ -48,29 +38,33 @@ def main():
         print(f"Usage: {sys.argv[0]} <report.json>", file=sys.stderr)
         sys.exit(1)
 
-    report = json.load(open(sys.argv[1]))
+    with open(sys.argv[1]) as f:
+        report = json.load(f)
+
     updates = report.get("updates", [])
     if not updates:
         print("No updates to apply", file=sys.stderr)
         sys.exit(0)
 
-    repo = os.environ["GITHUB_REPOSITORY"]
+    # Configure git identity
+    run_git(["config", "user.name", "github-actions[bot]"])
+    run_git(["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"])
 
-    # Get base branch SHA
-    data, err = gh_api(f"repos/{repo}/git/ref/heads/{BASE}")
-    if err:
-        print(f"Failed to get base branch: {err}", file=sys.stderr)
-        sys.exit(1)
-    base_sha = data["object"]["sha"]
-
-    # Get base commit's tree SHA
-    data, err = gh_api(f"repos/{repo}/git/commits/{base_sha}")
-    if err:
-        print(f"Failed to get base commit: {err}", file=sys.stderr)
-        sys.exit(1)
-    base_tree_sha = data["tree"]["sha"]
-
-    # Group updates by file
+    # Create/Checkout branch
+    # Try to checkout existing branch or create new one
+    print(f"Switching to branch {BRANCH}...", file=sys.stderr)
+    res = run_git(["checkout", BRANCH], check=False)
+    if res.returncode != 0:
+        run_git(["checkout", "-b", BRANCH])
+    
+    # Reset to matches with origin/main to avoid conflicts/stale state
+    # But we might not have origin/main fetched fully if shallow.
+    # Just ensure we start from current state (which is clean checkout of main).
+    # If we are reusing the branch, we should merge main or reset.
+    # For simplicity: We are on 'main' (from checkout), we branched off. 
+    # If the branch existed remotely, we will force push over it anyway.
+    
+    # Apply updates to files
     files_to_update = {}
     for u in updates:
         f = u["file"]
@@ -78,93 +72,50 @@ def main():
             files_to_update[f] = []
         files_to_update[f].append(u)
 
-    # Build new tree entries from updated files
-    tree_entries = []
+    print("Applying updates to local files...", file=sys.stderr)
     for filepath, file_updates in files_to_update.items():
-        # Read the file from the local checkout (read-only)
-        with open(filepath) as fh:
-            content = fh.read()
+        try:
+            with open(filepath, "r") as f:
+                content = f.read()
+            
+            for u in file_updates:
+                if u["type"] == "docker_digest":
+                    content = content.replace(u["current_digest"], u["latest_digest"])
+                elif u["type"] == "docker_unpinned":
+                    # Pin unpinned Docker image: image:tag -> image:tag@digest
+                    content = content.replace(u["raw_ref"], f"{u['raw_ref']}@{u['latest_digest']}")
+                elif u["type"] == "action_pinned":
+                    content = content.replace(u["current_sha"], u["latest_sha"])
+                elif u["type"] == "action_unpinned":
+                    # Pin unpinned Action: action@ref -> action@sha # ref
+                    replacement = f"{u['action']}@{u['latest_sha']} # {u['tag']}"
+                    content = content.replace(u["raw_ref"], replacement)
 
-        # Apply replacements in memory
-        for u in file_updates:
-            if u["type"] == "docker_digest":
-                content = content.replace(u["current_digest"], u["latest_digest"])
-            elif u["type"] == "docker_unpinned":
-                # Pin unpinned Docker image: image:tag -> image:tag@digest
-                content = content.replace(u["raw_ref"], f"{u['raw_ref']}@{u['latest_digest']}")
-            elif u["type"] == "action_pinned":
-                content = content.replace(u["current_sha"], u["latest_sha"])
-            elif u["type"] == "action_unpinned":
-                # Pin unpinned Action: action@ref -> action@sha # ref
-                # We use the captured raw_ref (e.g. "action@main") so we replace the exact text
-                replacement = f"{u['action']}@{u['latest_sha']} # {u['tag']}"
-                content = content.replace(u["raw_ref"], replacement)
+            with open(filepath, "w") as f:
+                f.write(content)
+            
+            # Stage file
+            run_git(["add", filepath])
+            
+        except FileNotFoundError:
+            print(f"Warning: File {filepath} not found, skipping.", file=sys.stderr)
 
-        # Create blob via API
-        data, err = gh_api(
-            f"repos/{repo}/git/blobs", method="POST",
-            input_data={"content": content, "encoding": "utf-8"},
-        )
-        if err:
-            print(f"Failed to create blob for {filepath}: {err}", file=sys.stderr)
-            sys.exit(1)
+    # Check if there are changes
+    res = run_git(["diff", "--cached", "--quiet"], check=False)
+    if res.returncode == 0:
+        print("No changes to commit.", file=sys.stderr)
+        return
 
-        tree_entries.append({
-            "path": filepath,
-            "mode": "100644",
-            "type": "blob",
-            "sha": data["sha"],
-        })
+    # Commit
+    print("Committing changes...", file=sys.stderr)
+    run_git(["commit", "-m", COMMIT_MSG])
 
-    # Create tree
-    data, err = gh_api(
-        f"repos/{repo}/git/trees", method="POST",
-        input_data={"base_tree": base_tree_sha, "tree": tree_entries},
-    )
-    if err:
-        print(f"Failed to create tree: {err}", file=sys.stderr)
-        sys.exit(1)
-    new_tree_sha = data["sha"]
+    # Push
+    print(f"Pushing branch {BRANCH}...", file=sys.stderr)
+    run_git(["push", "--force", "origin", BRANCH])
 
-    # Create commit
-    data, err = gh_api(
-        f"repos/{repo}/git/commits", method="POST",
-        input_data={
-            "message": COMMIT_MSG,
-            "tree": new_tree_sha,
-            "parents": [base_sha],
-        },
-    )
-    if err:
-        print(f"Failed to create commit: {err}", file=sys.stderr)
-        sys.exit(1)
-    new_commit_sha = data["sha"]
-    print(f"Created commit {new_commit_sha[:12]}", file=sys.stderr)
-
-    # Create or update branch ref
-    data, err = gh_api(f"repos/{repo}/git/ref/heads/{BRANCH}")
-    if err:
-        # Branch doesn't exist — create it
-        data, err = gh_api(
-            f"repos/{repo}/git/refs", method="POST",
-            input_data={"ref": f"refs/heads/{BRANCH}", "sha": new_commit_sha},
-        )
-        if err:
-            print(f"Failed to create branch: {err}", file=sys.stderr)
-            sys.exit(1)
-        print(f"Created branch {BRANCH}", file=sys.stderr)
-    else:
-        # Branch exists — force update
-        data, err = gh_api(
-            f"repos/{repo}/git/refs/heads/{BRANCH}", method="PATCH",
-            input_data={"sha": new_commit_sha, "force": True},
-        )
-        if err:
-            print(f"Failed to update branch: {err}", file=sys.stderr)
-            sys.exit(1)
-        print(f"Updated branch {BRANCH}", file=sys.stderr)
-
-    # Create PR if one doesn't already exist
+    # Create PR if needed
+    print("Checking for existing PR...", file=sys.stderr)
     result = subprocess.run(
         ["gh", "pr", "list", "--head", BRANCH, "--state", "open",
          "--json", "number", "-q", ".[0].number"],
@@ -173,6 +124,7 @@ def main():
     existing_pr = result.stdout.strip()
 
     if not existing_pr:
+        print("Creating Pull Request...", file=sys.stderr)
         # Build PR body
         lines = ["## Summary", "",
                  "Automated update of pinned dependency digests and/or SHAs "
@@ -191,6 +143,7 @@ def main():
             elif u["type"] == "action_unpinned":
                 lines.append(f"- **{u['action']}@{u['tag']}** in `{u['file']}` (Pinned)")
                 lines.append(f"  - `unpinned` -> `{u['latest_sha'][:12]}`")
+        
         lines += ["", "## Test plan", "",
                   "- [ ] Verify updated digests/SHAs resolve correctly",
                   "- [ ] Confirm nightly build passes with updated dependencies",
@@ -210,8 +163,7 @@ def main():
             sys.exit(1)
         print(f"Created PR: {result.stdout.strip()}", file=sys.stderr)
     else:
-        print(f"PR #{existing_pr} already exists, updated via branch force-push", file=sys.stderr)
-
+        print(f"PR #{existing_pr} already exists.", file=sys.stderr)
 
 if __name__ == "__main__":
     main()
