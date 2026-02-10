@@ -30,7 +30,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+        uses: gillouche/homelab-ci/actions/setup-nix-env@08d173d21e18c50cfde249a7904ae8a62366c6fe # main
         with:
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
@@ -65,7 +65,7 @@ jobs:
         run: nix develop --command bash -c "echo \$PATH >> \$GITHUB_PATH"
 
       - name: Trivy Scan
-        uses: gillouche/homelab-ci/actions/trivy-scan@main
+        uses: gillouche/homelab-ci/actions/trivy-scan@08d173d21e18c50cfde249a7904ae8a62366c6fe # main
         with:
           image: ${{ steps.build.outputs.image_full }}
           trivyignore: images/${{ inputs.image }}/.trivyignore
@@ -73,7 +73,7 @@ jobs:
 
       - name: Push Notification
         if: steps.build.outputs.pushed == 'true'
-        uses: gillouche/homelab-ci/actions/push-notify@main
+        uses: gillouche/homelab-ci/actions/push-notify@08d173d21e18c50cfde249a7904ae8a62366c6fe # main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
           image: ${{ inputs.image }}
