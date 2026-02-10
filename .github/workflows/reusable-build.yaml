@@ -37,6 +37,12 @@ jobs:
 
 
 
+      - name: Inject Nexus CA into Docker Daemon
+        run: |
+           # Copy the baked-in cert to the shared volume visible to the DIND sidecar
+           sudo mkdir -p /etc/docker/certs.d/nexus.gillouche.homelab
+           sudo cp /usr/local/share/ca-certificates/nexus-ca.crt /etc/docker/certs.d/nexus.gillouche.homelab/ca.crt
+
       - name: Build and Push
         id: build
         run: |
