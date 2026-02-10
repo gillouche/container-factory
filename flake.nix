@@ -28,9 +28,6 @@
           ];
 
           shellHook = ''
-            echo "Container Factory Dev Environment" >&2
-            echo "Tools available: make, trivy, docker-buildx" >&2
-            echo "Security tools: hadolint, shellcheck, dive, cosign, pre-commit, crane" >&2
           '';
         };
       }
