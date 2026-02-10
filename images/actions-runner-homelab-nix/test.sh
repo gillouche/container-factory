@@ -39,4 +39,13 @@ echo "PASS: git available ($GIT_VER)"
 CURL_VER=$(run_cmd "curl --version" | head -1)
 echo "PASS: curl available ($CURL_VER)"
 
+# Test: Nexus CA is trusted
+echo "Testing Nexus CA trust..."
+if run_cmd "curl -sI https://nexus.gillouche.homelab/"; then
+    echo "PASS: Nexus CA is trusted"
+else
+    echo "FAIL: Could not connect to https://nexus.gillouche.homelab/ (SSL/Trust missing?)"
+    exit 1
+fi
+
 echo "All ARC runner smoke tests passed."

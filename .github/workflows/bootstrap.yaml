@@ -31,7 +31,14 @@ jobs:
       - name: Login to Nexus
         run: echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
 
-      - name: Build Runner Image
+      - name: Build Base Runner (Wolfi)
+        run: |
+          docker build \
+             --build-arg VERSION="${{ inputs.version }}" \
+             -t nexus.gillouche.homelab/docker-hosted/base/actions-runner:${{ inputs.version }} \
+             images/actions-runner
+
+      - name: Build Nix Runner (Homelab)
         run: |
           docker build \
             --build-arg VERSION="${{ inputs.version }}" \
@@ -39,8 +46,17 @@ jobs:
             -t nexus.gillouche.homelab/docker-hosted/base/actions-runner-homelab-nix:latest \
             images/actions-runner-homelab-nix
 
-      - name: Push Runner Image
+      - name: Verify Runner Image (Smoke Test)
+        run: |
+          ./images/actions-runner-homelab-nix/test.sh \
+            nexus.gillouche.homelab/docker-hosted/base/actions-runner-homelab-nix:${{ inputs.version }}
+
+      - name: Push Runner Images
         if: inputs.push
         run: |
+          # Push Base
+          docker push nexus.gillouche.homelab/docker-hosted/base/actions-runner:${{ inputs.version }}
+          
+          # Push Nix/Latest
           docker push nexus.gillouche.homelab/docker-hosted/base/actions-runner-homelab-nix:${{ inputs.version }}
           docker push nexus.gillouche.homelab/docker-hosted/base/actions-runner-homelab-nix:latest
