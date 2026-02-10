@@ -42,7 +42,7 @@ jobs:
           echo "DEBUG: report_versions.json content:"
           cat report_versions.json
 
-          nix develop ./#default --command jq -s '.[0] | .updates += (.[1].updates // [])' report_pins.json report_versions.json > report.json
+          nix develop ./#default --command jq --slurpfile v report_versions.json '.updates += ($v[0].updates // [])' report_pins.json > report.json
           
           echo "updates=$(jq '.updates | length' report.json)" >> "$GITHUB_OUTPUT"
           echo "warnings=$(jq '.warnings | length' report.json)" >> "$GITHUB_OUTPUT"
