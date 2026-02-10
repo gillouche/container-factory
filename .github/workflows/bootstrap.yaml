@@ -48,6 +48,7 @@ jobs:
 
       - name: Verify Runner Image (Smoke Test)
         run: |
+          chmod +x ./images/actions-runner-homelab-nix/test.sh
           ./images/actions-runner-homelab-nix/test.sh \
             nexus.gillouche.homelab/docker-hosted/base/actions-runner-homelab-nix:${{ inputs.version }}
 
