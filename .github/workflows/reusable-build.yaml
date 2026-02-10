@@ -55,18 +55,15 @@ jobs:
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
 
+      - name: Export Nix Environment to PATH
+        run: nix develop --command bash -c "echo \$PATH >> \$GITHUB_PATH"
+
       - name: Trivy Scan
-        shell: bash
-        run: |
-           nix develop ./#default --command bash -c "export ACTION_PATH='${{ github.workspace }}' && \
-           trivy image \
-            --format json \
-            --output trivy-results.json \
-            --severity HIGH,CRITICAL \
-            --ignore-unfixed \
-            '${{ steps.build.outputs.image_full }}'"
-        env:
-           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
+        uses: gillouche/homelab-ci/actions/trivy-scan@main
+        with:
+          image: ${{ steps.build.outputs.image_full }}
+          trivyignore: images/${{ inputs.image }}/.trivyignore
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
 
       - name: Push Notification
         if: steps.build.outputs.pushed == 'true'
