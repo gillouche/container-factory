@@ -36,36 +36,6 @@ jobs:
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
 
-      - name: Setup temporary Nexus CA (Bootstrap)
-        shell: bash
-        run: |
-          # 1. Update Runner shell trust (for Nix/Curl)
-          sudo mkdir -p /usr/local/share/ca-certificates
-          sudo cp images/actions-runner-homelab-nix/nexus-ca.crt /usr/local/share/ca-certificates/nexus-ca.crt
-          
-          if command -v trust >/dev/null; then
-            sudo trust anchor /usr/local/share/ca-certificates/nexus-ca.crt
-            echo "Updated trust using 'trust anchor'"
-          elif command -v update-ca-certificates >/dev/null; then
-            sudo update-ca-certificates
-            echo "Updated trust using 'update-ca-certificates'"
-          else
-            echo "Warning: No CA update tool found, falling back to manual append for runner"
-            for bundle in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/ca-bundle.pem /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem; do
-              if [ -f "$bundle" ]; then
-                sudo tee -a "$bundle" < images/actions-runner-homelab-nix/nexus-ca.crt > /dev/null
-                echo "Appended to $bundle"
-              fi
-            done
-          fi
-
-          # 2. Update Docker Daemon trust (for docker login/push)
-          # We use a container to inject the certificate into the daemon's cert store.
-          # We use standard busybox from Docker Hub as it is reachable without the Nexus CA.
-          cat images/actions-runner-homelab-nix/nexus-ca.crt | docker run --rm -i \
-            -v /etc/docker/certs.d:/certs \
-            busybox sh -c "mkdir -p /certs/nexus.gillouche.homelab && cat > /certs/nexus.gillouche.homelab/ca.crt"
-          echo "Injected CA into Docker Daemon certificate store"
 
       - name: Build and Push
         id: build
@@ -86,11 +56,17 @@ jobs:
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
 
       - name: Trivy Scan
-        uses: gillouche/homelab-ci/actions/trivy-scan@main
-        with:
-          image: ${{ steps.build.outputs.image_full }}
-          trivyignore: images/${{ inputs.image }}/.trivyignore
-          discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
+        shell: bash
+        run: |
+           nix develop ./#default --command bash -c "export ACTION_PATH='${{ github.workspace }}' && \
+           trivy image \
+            --format json \
+            --output trivy-results.json \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            '${{ steps.build.outputs.image_full }}'"
+        env:
+           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
 
       - name: Push Notification
         if: steps.build.outputs.pushed == 'true'

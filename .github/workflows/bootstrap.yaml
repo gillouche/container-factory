@@ -1,0 +1,46 @@
+name: Bootstrap Runner Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Runner Version'
+        required: true
+        default: '2.331.0'
+      push:
+        description: 'Push to Nexus'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  bootstrap-runner:
+    runs-on: container-factory-runner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject Nexus CA (Bootstrap)
+        run: |
+          # Use busybox from Docker Hub (no auth required) to inject the cert
+          cat images/actions-runner-homelab-nix/nexus-ca.crt | docker run --rm -i \
+            -v /etc/docker/certs.d:/certs \
+            busybox sh -c "mkdir -p /certs/nexus.gillouche.homelab && cat > /certs/nexus.gillouche.homelab/ca.crt"
+          echo "Injected CA into Docker Daemon certificate store"
+
+      - name: Login to Nexus
+        run: echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
+
+      - name: Build Runner Image
+        run: |
+          docker build \
+            --build-arg VERSION="${{ inputs.version }}" \
+            -t nexus.gillouche.homelab/docker-hosted/base/actions-runner-homelab-nix:${{ inputs.version }} \
+            -t nexus.gillouche.homelab/docker-hosted/base/actions-runner-homelab-nix:latest \
+            images/actions-runner-homelab-nix
+
+      - name: Push Runner Image
+        if: inputs.push
+        run: |
+          docker push nexus.gillouche.homelab/docker-hosted/base/actions-runner-homelab-nix:${{ inputs.version }}
+          docker push nexus.gillouche.homelab/docker-hosted/base/actions-runner-homelab-nix:latest

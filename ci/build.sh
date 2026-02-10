@@ -115,13 +115,13 @@ for VERSION in $VARIANTS; do
             echo "Skipping smoke test ($TEST_SCRIPT) due to SMOKE_TEST=false"
         else
             echo "Running smoke test ($TEST_SCRIPT)..."
-        if bash "$TEST_SCRIPT" "$LOCAL_TAG" "$VERSION"; then
-            echo "Smoke test passed!"
-        else
-            echo "Smoke test failed!"
-            docker rmi "$LOCAL_TAG" || true
-            exit 1
-        fi
+            if bash "$TEST_SCRIPT" "$LOCAL_TAG" "$VERSION"; then
+                echo "Smoke test passed!"
+            else
+                echo "Smoke test failed!"
+                docker rmi "$LOCAL_TAG" || true
+                exit 1
+            fi
         fi
     else
         echo "Warning: No smoke test found for $IMAGE_NAME (no test.sh)"
@@ -130,9 +130,6 @@ for VERSION in $VARIANTS; do
     # Save local image ID for idempotency check
     LOCAL_ID=$(docker inspect --format='{{.Id}}' "$LOCAL_TAG")
     
-    # ---------------------------------------------------------
-    # 2. Check for Idempotency (if Pushing)
-    # ---------------------------------------------------------
     PUSH_NECESSARY="true"
     if [ "$PUSH_IMAGES" = "true" ] && command -v crane &> /dev/null; then
         echo "Checking if push is necessary for $FULL_IMAGE:$VERSION..."
