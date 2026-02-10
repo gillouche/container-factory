@@ -43,7 +43,14 @@ jobs:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: info
           title: CI Pipeline Started
-          message: "Building images (commit ${{ github.sha }})"
+          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          message: "Building images"
+          fields: |
+            [
+              {"name": "Ref", "value": "${{ github.ref_name }}", "inline": true},
+              {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
+              {"name": "Actor", "value": "${{ github.actor }}", "inline": true}
+            ]
 
       - name: Setup Nix Environment
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
@@ -148,6 +155,13 @@ jobs:
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: ${{ steps.status.outputs.status }}
-          title: CI Pipeline
+          title: CI Pipeline Result
+          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           message: ${{ steps.status.outputs.message }}
+          fields: |
+            [
+              {"name": "Ref", "value": "${{ github.ref_name }}", "inline": true},
+              {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
+              {"name": "Actor", "value": "${{ github.actor }}", "inline": true}
+            ]
 
