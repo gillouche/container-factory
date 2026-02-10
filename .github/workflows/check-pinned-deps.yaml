@@ -34,9 +34,13 @@ jobs:
           if nix develop ./#default --command python3 ci/check_upstream_versions.py > report_versions.json; then
             echo "Version check complete."
           else
-            echo "Version check failed. skipping variants."
             echo '{"updates": []}' > report_versions.json
           fi
+
+          echo "DEBUG: report_pins.json content:"
+          cat report_pins.json
+          echo "DEBUG: report_versions.json content:"
+          cat report_versions.json
 
           nix develop ./#default --command jq -s '.[0] | .updates += (.[1].updates // [])' report_pins.json report_versions.json > report.json
           

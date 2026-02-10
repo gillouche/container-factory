@@ -104,9 +104,9 @@ def find_action_pins(root):
             if action.startswith("./"):
                 continue
 
-            # Extract tag comment if present (e.g., "# v4.2.2")
+            # Extract tag comment if present (e.g., "# v4.2.2" or "# main")
             line = content[m.start() : content.index("\n", m.start())]
-            tag_match = re.search(r"#\s*(v\S+)", line)
+            tag_match = re.search(r"#\s*(\S+)", line)
             tag = tag_match.group(1) if tag_match else None
 
             if re.match(r"^[0-9a-f]{40}$", ref):
