@@ -30,6 +30,18 @@ def main():
                     "value": f"File: `{u['file']}`\nOld: `{u['current_sha'][:12]}`\nNew: `{u['latest_sha'][:12]}`",
                     "inline": False
                 })
+            elif u["type"] == "docker_unpinned":
+                fields.append({
+                    "name": f"{u['image']}:{u['tag']}",
+                    "value": f"File: `{u['file']}`\nStatus: Pinned to `{u['latest_digest'][:19]}...`",
+                    "inline": False
+                })
+            elif u["type"] == "action_unpinned":
+                 fields.append({
+                    "name": f"{u['action']}@{u['tag']}",
+                    "value": f"File: `{u['file']}`\nStatus: Pinned to `{u['latest_sha'][:12]}`",
+                    "inline": False
+                })
 
     elif args.type == "warnings":
         for w in report.get("warnings", []):

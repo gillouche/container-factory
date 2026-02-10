@@ -89,8 +89,16 @@ def main():
         for u in file_updates:
             if u["type"] == "docker_digest":
                 content = content.replace(u["current_digest"], u["latest_digest"])
+            elif u["type"] == "docker_unpinned":
+                # Pin unpinned Docker image: image:tag -> image:tag@digest
+                content = content.replace(u["raw_ref"], f"{u['raw_ref']}@{u['latest_digest']}")
             elif u["type"] == "action_pinned":
                 content = content.replace(u["current_sha"], u["latest_sha"])
+            elif u["type"] == "action_unpinned":
+                # Pin unpinned Action: action@ref -> action@sha # ref
+                # We use the captured raw_ref (e.g. "action@main") so we replace the exact text
+                replacement = f"{u['action']}@{u['latest_sha']} # {u['tag']}"
+                content = content.replace(u["raw_ref"], replacement)
 
         # Create blob via API
         data, err = gh_api(
@@ -174,9 +182,15 @@ def main():
             if u["type"] == "docker_digest":
                 lines.append(f"- **{u['image']}:{u['tag']}** in `{u['file']}`")
                 lines.append(f"  - `{u['current_digest'][:19]}...` -> `{u['latest_digest'][:19]}...`")
+            elif u["type"] == "docker_unpinned":
+                lines.append(f"- **{u['image']}:{u['tag']}** in `{u['file']}` (Pinned)")
+                lines.append(f"  - `unpinned` -> `{u['latest_digest'][:19]}...`")
             elif u["type"] == "action_pinned":
                 lines.append(f"- **{u['action']}@{u['tag']}** in `{u['file']}`")
                 lines.append(f"  - `{u['current_sha'][:12]}` -> `{u['latest_sha'][:12]}`")
+            elif u["type"] == "action_unpinned":
+                lines.append(f"- **{u['action']}@{u['tag']}** in `{u['file']}` (Pinned)")
+                lines.append(f"  - `unpinned` -> `{u['latest_sha'][:12]}`")
         lines += ["", "## Test plan", "",
                   "- [ ] Verify updated digests/SHAs resolve correctly",
                   "- [ ] Confirm nightly build passes with updated dependencies",
