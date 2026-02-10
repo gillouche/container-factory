@@ -40,7 +40,9 @@ def main():
             base_image = get_base_image(dockerfile_path)
             
             # Determine level
-            is_level_2 = base_image and base_image.startswith(internal_registry_prefix)
+            # Level 2 if base image depends on our internal hosted images (e.g. actions-runner base)
+            # Proxied images (docker-hub, etc.) are considered external (Level 1)
+            is_level_2 = base_image and "/docker-hosted/" in base_image and base_image.startswith(internal_registry_prefix)
             
             # Filter based on requested level
             if args.level == 1 and is_level_2:
