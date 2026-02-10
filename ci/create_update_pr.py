@@ -20,7 +20,7 @@ import sys
 
 BRANCH = "auto-update/pinned-deps"
 BASE = "main"
-COMMIT_MSG = "chore: update pinned dependency digests/SHAs"
+COMMIT_MSG = "update: pinned dependency digests/SHAs"
 
 
 def run_git(args, check=True):
