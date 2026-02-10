@@ -57,7 +57,7 @@ jobs:
         if: steps.check.outputs.updates != '0'
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
-          webhook: ${{ secrets.SECURITY_NOTIFICATIONS_DISCORD }}
+          webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
           title: "Pinned Dependency Updates Available"
           status: warning
           url: ${{ env.pr_url }}
@@ -78,7 +78,7 @@ jobs:
         if: steps.check.outputs.updates == '0' && steps.check.outputs.warnings != '0'
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
-          webhook: ${{ secrets.SECURITY_NOTIFICATIONS_DISCORD }}
+          webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
           title: "Unpinned Dependencies Detected"
           status: failure
           message: "The following dependencies are not pinned."
@@ -98,7 +98,7 @@ jobs:
         if: steps.check.outputs.updates == '0' && steps.check.outputs.warnings == '0'
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
-          webhook: ${{ secrets.SECURITY_NOTIFICATIONS_DISCORD }}
+          webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
           title: "All Pinned Dependencies Up To Date"
           status: success
           message: "Dependency check completed successfully."
