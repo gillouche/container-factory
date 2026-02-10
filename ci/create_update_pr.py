@@ -50,12 +50,11 @@ def main():
     run_git(["config", "user.name", "github-actions[bot]"])
     run_git(["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"])
 
-    # Create/Checkout branch
-    # Try to checkout existing branch or create new one
-    print(f"Switching to branch {BRANCH}...", file=sys.stderr)
-    res = run_git(["checkout", BRANCH], check=False)
-    if res.returncode != 0:
-        run_git(["checkout", "-b", BRANCH])
+    # Create/Reset branch to start fresh from origin/main
+    # This prevents stale state on persistent runners and ensures updates apply relative to current main
+    print(f"Resetting branch {BRANCH} to origin/{BASE}...", file=sys.stderr)
+    run_git(["fetch", "origin", BASE])
+    run_git(["checkout", "-B", BRANCH, f"origin/{BASE}"])
     
     # Reset to matches with origin/main to avoid conflicts/stale state
     # But we might not have origin/main fetched fully if shallow.
