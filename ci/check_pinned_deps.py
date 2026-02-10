@@ -40,6 +40,10 @@ def find_docker_digests(root):
         ):
             from_ref = m.group(1)
 
+            # Skip parameterized references (containing $) to avoid breaking generic Dockerfiles
+            if "$" in from_ref:
+                continue
+
             # Resolve ${VAR} references using ARG defaults
             resolved = re.sub(
                 r"\$\{(\w+)\}", lambda v: args.get(v.group(1), v.group(0)), from_ref

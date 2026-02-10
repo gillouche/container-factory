@@ -41,19 +41,11 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           nix develop ./#default --command bash -c "
+            set -e
             python3 ci/create_update_pr.py report.json
             PR_URL=\$(gh pr view auto-update/pinned-deps --json url -q '.url' 2>/dev/null || true)
             echo \"pr_url=\$PR_URL\" >> \"\$GITHUB_ENV\"
           "
-
-      - name: Generate Update Fields
-        if: steps.check.outputs.updates != '0'
-        id: report-updates
-        run: |
-          nix develop ./#default --command python3 ci/format_discord_report.py report.json --type updates > update_fields.json
-          echo 'fields<<EOF' >> $GITHUB_OUTPUT
-          cat update_fields.json >> $GITHUB_OUTPUT
-          echo 'EOF' >> $GITHUB_OUTPUT
 
       - name: Notify Discord — updates available
         if: steps.check.outputs.updates != '0'
@@ -63,8 +55,7 @@ jobs:
           title: "Pinned Dependency Updates Available"
           status: warning
           url: ${{ env.pr_url }}
-          message: "Updates available for pinned dependencies."
-          fields: ${{ steps.report-updates.outputs.fields }}
+          message: "A Pull Request has been created with pinned dependency updates."
           username: "Dependency Checker"
 
       - name: Generate Warning Fields

@@ -78,7 +78,13 @@ def main():
             with open(filepath, "r") as f:
                 content = f.read()
             
+            seen_refs = set()
             for u in file_updates:
+                ref_key = (u["type"], u["raw_ref"])
+                if ref_key in seen_refs:
+                    continue
+                seen_refs.add(ref_key)
+
                 if u["type"] == "docker_digest":
                     content = content.replace(u["current_digest"], u["latest_digest"])
                 elif u["type"] == "docker_unpinned":
