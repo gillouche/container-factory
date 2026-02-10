@@ -16,8 +16,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+      - name: Setup Nix Environment
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+        with:
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Check pinned dependencies
         id: check
@@ -33,114 +36,69 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          python3 ci/create_update_pr.py report.json
-          PR_URL=$(gh pr view auto-update/pinned-deps --json url -q '.url' 2>/dev/null || true)
-          echo "pr_url=$PR_URL" >> "$GITHUB_ENV"
+          nix develop ./#default --command bash -c "
+            python3 ci/create_update_pr.py report.json
+            PR_URL=\$(gh pr view auto-update/pinned-deps --json url -q '.url' 2>/dev/null || true)
+            echo \"pr_url=\$PR_URL\" >> \"\$GITHUB_ENV\"
+          "
+
+      - name: Generate Update Fields
+        if: steps.check.outputs.updates != '0'
+        id: report-updates
+        run: |
+          nix develop ./#default --command python3 ci/format_discord_report.py report.json --type updates > update_fields.json
+          echo 'fields<<EOF' >> $GITHUB_OUTPUT
+          cat update_fields.json >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
 
       - name: Notify Discord — updates available
         if: steps.check.outputs.updates != '0'
-        env:
-          SECURITY_NOTIFICATIONS_DISCORD: ${{ secrets.SECURITY_NOTIFICATIONS_DISCORD }}
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          webhook: ${{ secrets.SECURITY_NOTIFICATIONS_DISCORD }}
+          title: "Pinned Dependency Updates Available"
+          status: warning
+          url: ${{ env.pr_url }}
+          message: "Updates available for pinned dependencies."
+          fields: ${{ steps.report-updates.outputs.fields }}
+          username: "Dependency Checker"
+
+      - name: Generate Warning Fields
+        if: steps.check.outputs.updates == '0' && steps.check.outputs.warnings != '0'
+        id: report-warnings
         run: |
-          [ -z "$SECURITY_NOTIFICATIONS_DISCORD" ] && echo "No webhook configured" && exit 0
-          python3 -c "
-          import json, os, urllib.request
-
-          report = json.load(open('report.json'))
-          pr_url = os.environ.get('pr_url', '')
-
-          fields = []
-          for u in report['updates']:
-              if u['type'] == 'docker_digest':
-                  fields.append({
-                      'name': f\"{u['image']}:{u['tag']}\",
-                      'value': f\"File: \`{u['file']}\`\nOld: \`{u['current_digest'][:19]}...\`\nNew: \`{u['latest_digest'][:19]}...\`\",
-                      'inline': False
-                  })
-              elif u['type'] == 'action_pinned':
-                  fields.append({
-                      'name': f\"{u['action']}@{u['tag']}\",
-                      'value': f\"File: \`{u['file']}\`\nOld: \`{u['current_sha'][:12]}\`\nNew: \`{u['latest_sha'][:12]}\`\",
-                      'inline': False
-                  })
-
-          embed = {
-              'title': 'Pinned Dependency Updates Available',
-              'color': 15105570,
-              'fields': fields,
-          }
-          if pr_url:
-              embed['description'] = f'PR: {pr_url}'
-
-          payload = json.dumps({'username': 'Dependency Checker', 'embeds': [embed]}).encode()
-          req = urllib.request.Request(
-              os.environ['SECURITY_NOTIFICATIONS_DISCORD'],
-              data=payload,
-              headers={'Content-Type': 'application/json', 'User-Agent': 'Container-Factory-DepCheck'}
-          )
-          urllib.request.urlopen(req)
-          print('Discord notification sent')
-          "
+          nix develop ./#default --command python3 ci/format_discord_report.py report.json --type warnings > warning_fields.json
+          echo 'fields<<EOF' >> $GITHUB_OUTPUT
+          cat warning_fields.json >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
 
       - name: Notify Discord — unpinned dependencies only
         if: steps.check.outputs.updates == '0' && steps.check.outputs.warnings != '0'
-        env:
-          SECURITY_NOTIFICATIONS_DISCORD: ${{ secrets.SECURITY_NOTIFICATIONS_DISCORD }}
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          webhook: ${{ secrets.SECURITY_NOTIFICATIONS_DISCORD }}
+          title: "Unpinned Dependencies Detected"
+          status: failure
+          message: "The following dependencies are not pinned."
+          fields: ${{ steps.report-warnings.outputs.fields }}
+          username: "Dependency Checker"
+
+      - name: Generate Success Fields
+        if: steps.check.outputs.updates == '0' && steps.check.outputs.warnings == '0'
+        id: report-success
         run: |
-          [ -z "$SECURITY_NOTIFICATIONS_DISCORD" ] && echo "No webhook configured" && exit 0
-          python3 -c "
-          import json, os, urllib.request
-
-          report = json.load(open('report.json'))
-          fields = []
-          for w in report['warnings']:
-              fields.append({
-                  'name': w.get('action', w.get('image', 'unknown')),
-                  'value': f\"File: \`{w['file']}\`\n{w['reason']}\",
-                  'inline': False
-              })
-
-          embed = {
-              'title': 'Unpinned Dependencies Detected',
-              'color': 16711680,
-              'description': 'The following dependencies are not pinned by digest/SHA.',
-              'fields': fields,
-          }
-
-          payload = json.dumps({'username': 'Dependency Checker', 'embeds': [embed]}).encode()
-          req = urllib.request.Request(
-              os.environ['SECURITY_NOTIFICATIONS_DISCORD'],
-              data=payload,
-              headers={'Content-Type': 'application/json', 'User-Agent': 'Container-Factory-DepCheck'}
-          )
-          urllib.request.urlopen(req)
-          print('Discord notification sent')
-          "
+          nix develop ./#default --command python3 ci/format_discord_report.py report.json --type success > success_fields.json
+          echo 'fields<<EOF' >> $GITHUB_OUTPUT
+          cat success_fields.json >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
 
       - name: Notify Discord — all up to date
         if: steps.check.outputs.updates == '0' && steps.check.outputs.warnings == '0'
-        env:
-          SECURITY_NOTIFICATIONS_DISCORD: ${{ secrets.SECURITY_NOTIFICATIONS_DISCORD }}
-        run: |
-          [ -z "$SECURITY_NOTIFICATIONS_DISCORD" ] && echo "No webhook configured" && exit 0
-          python3 -c "
-          import json, os, urllib.request
-
-          report = json.load(open('report.json'))
-          count = len(report['up_to_date'])
-
-          embed = {
-              'title': 'All Pinned Dependencies Up To Date',
-              'color': 3066993,
-              'description': f'{count} pinned dependencies checked — all digests and SHAs match upstream.',
-          }
-
-          payload = json.dumps({'username': 'Dependency Checker', 'embeds': [embed]}).encode()
-          req = urllib.request.Request(
-              os.environ['SECURITY_NOTIFICATIONS_DISCORD'],
-              data=payload,
-              headers={'Content-Type': 'application/json', 'User-Agent': 'Container-Factory-DepCheck'}
-          )
-          urllib.request.urlopen(req)
-          print('Discord notification sent')
-          "
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          webhook: ${{ secrets.SECURITY_NOTIFICATIONS_DISCORD }}
+          title: "All Pinned Dependencies Up To Date"
+          status: success
+          message: "Dependency check completed successfully."
+          fields: ${{ steps.report-success.outputs.fields }}
+          username: "Dependency Checker"

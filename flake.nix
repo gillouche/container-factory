@@ -23,6 +23,8 @@
             cosign
             pre-commit
             crane
+            gh
+            python3
           ];
 
           shellHook = ''
