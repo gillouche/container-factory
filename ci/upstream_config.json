@@ -8,5 +8,10 @@
         "source": "docker_hub",
         "image": "library/python",
         "tag_template": "{version}-slim-trixie"
+    },
+    "images/actions-runner-homelab-nix/VARIANTS": {
+        "source": "github_release",
+        "repo": "actions/runner",
+        "prefix": "v"
     }
 }

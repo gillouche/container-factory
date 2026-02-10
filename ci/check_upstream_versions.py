@@ -152,6 +152,8 @@ def main():
         if not available:
             print(f"  No upstream versions found.", file=sys.stderr)
             continue
+        
+        print(f"  Found {len(available)} upstream tags.", file=sys.stderr)
             
         for cv in current_versions:
             try:
