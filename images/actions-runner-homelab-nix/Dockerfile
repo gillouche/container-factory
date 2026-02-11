@@ -36,6 +36,7 @@ RUN export NIX_CONFIG="filter-syscalls = false" && \
     'substituters = s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http https://cache.nixos.org/' \
     'trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
     'require-sigs = false' \
+    's3-creds-profile = nix' \
     > "${HOME}/.config/nix/nix.conf" && \
     nix --version && \
     nix-collect-garbage -d && \
@@ -45,6 +46,13 @@ SHELL ["/bin/sh", "-c"]
 
 # Add Nix to PATH for all future commands and runtime
 ENV PATH="${HOME}/.nix-profile/bin:$PATH"
+
+# Global Nix configuration (after installation)
+USER root
+RUN mkdir -p /etc/nix && \
+    grep -q "s3-creds-profile = nix" /etc/nix/nix.conf 2>/dev/null || \
+    echo "s3-creds-profile = nix" >> /etc/nix/nix.conf
+USER runner
 
 ARG VERSION
 LABEL org.opencontainers.image.source="https://github.com/gillouche/container-factory"

@@ -8,7 +8,8 @@ NAMESPACE=${NEXUS_NAMESPACE:-docker-hosted}
 
 # Using Docker Buildx (DIND Sidecar supports this)
 if [ -f "images/$IMAGE_NAME/PLATFORMS" ]; then
-    PLATFORMS=$(cat "images/$IMAGE_NAME/PLATFORMS")
+    # Convert newline or space separated list to comma-separated format for buildx
+    PLATFORMS=$(tr '\n' ',' < "images/$IMAGE_NAME/PLATFORMS" | sed 's/,,*/,/g; s/^,//; s/,$//')
 else
     PLATFORMS="linux/amd64,linux/arm64"
 fi

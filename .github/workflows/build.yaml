@@ -38,7 +38,7 @@ jobs:
       
       - name: Send Start Notification
         continue-on-error: true
-        uses: gillouche/homelab-ci/actions/discord-notify@c3a0054595ec8c89e9ede1361f450050d8c2000e # main
+        uses: gillouche/homelab-ci/actions/discord-notify@main # main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: info
@@ -53,7 +53,7 @@ jobs:
             ]
 
       - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@c3a0054595ec8c89e9ede1361f450050d8c2000e # main
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main # main
         with:
           profile: "nix"
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
@@ -153,7 +153,7 @@ jobs:
 
       - name: Send Completion Notification
         continue-on-error: true
-        uses: gillouche/homelab-ci/actions/discord-notify@c3a0054595ec8c89e9ede1361f450050d8c2000e # main
+        uses: gillouche/homelab-ci/actions/discord-notify@main # main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: ${{ steps.status.outputs.status }}

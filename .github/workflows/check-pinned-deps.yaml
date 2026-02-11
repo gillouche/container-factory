@@ -19,7 +19,7 @@ jobs:
           token: ${{ secrets.PR_TOKEN }}
 
       - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@c3a0054595ec8c89e9ede1361f450050d8c2000e # main
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main # main
         with:
           profile: "nix"
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
@@ -64,7 +64,7 @@ jobs:
 
       - name: Notify Discord — updates available
         if: steps.check.outputs.updates != '0'
-        uses: gillouche/homelab-ci/actions/discord-notify@c3a0054595ec8c89e9ede1361f450050d8c2000e # main
+        uses: gillouche/homelab-ci/actions/discord-notify@main # main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
           title: "Pinned Dependency Updates Available"
@@ -84,7 +84,7 @@ jobs:
 
       - name: Notify Discord — unpinned dependencies only
         if: steps.check.outputs.updates == '0' && steps.check.outputs.warnings != '0'
-        uses: gillouche/homelab-ci/actions/discord-notify@c3a0054595ec8c89e9ede1361f450050d8c2000e # main
+        uses: gillouche/homelab-ci/actions/discord-notify@main # main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
           title: "Unpinned Dependencies Detected"
@@ -104,7 +104,7 @@ jobs:
 
       - name: Notify Discord — all up to date
         if: steps.check.outputs.updates == '0' && steps.check.outputs.warnings == '0'
-        uses: gillouche/homelab-ci/actions/discord-notify@c3a0054595ec8c89e9ede1361f450050d8c2000e # main
+        uses: gillouche/homelab-ci/actions/discord-notify@main # main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
           title: "All Pinned Dependencies Up To Date"
