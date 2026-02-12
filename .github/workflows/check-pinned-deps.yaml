@@ -18,12 +18,15 @@ jobs:
         with:
           token: ${{ secrets.PR_TOKEN }}
 
-      - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@main # main
+      - name: Setup Nix Cache Profile
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
         with:
           profile: "nix"
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
+      - name: Setup Nix Environment
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
 
       - name: Check pinned dependencies
         id: check

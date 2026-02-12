@@ -52,22 +52,21 @@ jobs:
               {"name": "Actor", "value": "${{ github.actor }}", "inline": true}
             ]
 
-      - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@main # main
+      - name: Setup Nix Cache Profile
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
         with:
           profile: "nix"
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
+      - name: Setup Nix Environment
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
 
       - name: Push Dev Environment to Nix Cache
         run: |
           { set +x; } 2>/dev/null
           echo "Pre-caching development environment..."
           nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" .#devShells.x86_64-linux.default
-        env:
-          AWS_PROFILE: "nix"
-          AWS_ACCESS_KEY_ID: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Generate Matrix Level 1
         id: set-matrix-l1
