@@ -66,7 +66,7 @@ jobs:
         run: |
           { set +x; } 2>/dev/null
           echo "Pre-caching development environment..."
-          nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" .#devShells.x86_64-linux.default
+          nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http&profile=nix" .#devShells.x86_64-linux.default
 
       - name: Generate Matrix Level 1
         id: set-matrix-l1
