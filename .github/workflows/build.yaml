@@ -38,7 +38,7 @@ jobs:
       
       - name: Send Start Notification
         continue-on-error: true
-        uses: gillouche/homelab-ci/actions/discord-notify@main # main
+        uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: info
@@ -152,7 +152,7 @@ jobs:
 
       - name: Send Completion Notification
         continue-on-error: true
-        uses: gillouche/homelab-ci/actions/discord-notify@main # main
+        uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: ${{ steps.status.outputs.status }}

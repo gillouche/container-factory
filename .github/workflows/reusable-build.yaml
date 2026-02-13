@@ -67,7 +67,7 @@ jobs:
         run: nix develop --command bash -c "echo \$PATH >> \$GITHUB_PATH"
 
       - name: Trivy Scan
-        uses: gillouche/homelab-ci/actions/trivy-scan@main # main
+        uses: gillouche/homelab-ci/actions/trivy-scan@main
         with:
           image: ${{ steps.build.outputs.image_full }}
           trivyignore: images/${{ inputs.image }}/.trivyignore
@@ -75,7 +75,7 @@ jobs:
 
       - name: Push Notification
         if: steps.build.outputs.pushed == 'true'
-        uses: gillouche/homelab-ci/actions/push-notify@main # main
+        uses: gillouche/homelab-ci/actions/push-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
           image: ${{ inputs.image }}
