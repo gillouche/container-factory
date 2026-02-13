@@ -30,14 +30,14 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup Nix Cache Profile
-        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@f5723a407eabc03e294948b3b1dd86c880c7c77a # main
         with:
           profile: "nix"
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+        uses: gillouche/homelab-ci/actions/setup-nix-env@f5723a407eabc03e294948b3b1dd86c880c7c77a # main
 
       - name: Inject Nexus CA into Docker Daemon
         run: |
@@ -67,7 +67,7 @@ jobs:
         run: nix develop --command bash -c "echo \$PATH >> \$GITHUB_PATH"
 
       - name: Trivy Scan
-        uses: gillouche/homelab-ci/actions/trivy-scan@main # main
+        uses: gillouche/homelab-ci/actions/trivy-scan@f5723a407eabc03e294948b3b1dd86c880c7c77a # main # main
         with:
           image: ${{ steps.build.outputs.image_full }}
           trivyignore: images/${{ inputs.image }}/.trivyignore
@@ -75,7 +75,7 @@ jobs:
 
       - name: Push Notification
         if: steps.build.outputs.pushed == 'true'
-        uses: gillouche/homelab-ci/actions/push-notify@main # main
+        uses: gillouche/homelab-ci/actions/push-notify@f5723a407eabc03e294948b3b1dd86c880c7c77a # main # main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
           image: ${{ inputs.image }}
