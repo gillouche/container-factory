@@ -1,12 +1,12 @@
+ARG VERSION=2.331.0
+
 # Stage: Create Java truststore with Homelab Root CA baked in.
 # Bazel's embedded JVM uses its own cacerts and ignores the OS trust store,
 # so we need a JKS truststore that includes the Homelab Root CA.
-FROM eclipse-temurin:21-jre AS java-cacerts
+FROM nexus.gillouche.homelab/docker-hub/eclipse-temurin:21-jre AS java-cacerts
 COPY nexus-ca.crt /tmp/nexus-ca.crt
 RUN keytool -importcert -cacerts -storepass changeit -noprompt \
       -alias homelab-root-ca -file /tmp/nexus-ca.crt
-
-ARG VERSION=2.331.0
 
 FROM nexus.gillouche.homelab/docker-hosted/base/actions-runner:${VERSION}
 

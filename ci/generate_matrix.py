@@ -4,17 +4,19 @@ import os
 import sys
 import argparse
 
-def get_base_image(dockerfile_path):
+def get_base_images(dockerfile_path):
+    """Return all FROM image references in the Dockerfile (handles multi-stage builds)."""
     if not os.path.exists(dockerfile_path):
-        return None
+        return []
+    images = []
     with open(dockerfile_path, "r") as f:
         for line in f:
             if line.strip().upper().startswith("FROM "):
                 # Extract image name (handling "AS ..." aliases)
                 parts = line.strip().split()
                 if len(parts) > 1:
-                    return parts[1]
-    return None
+                    images.append(parts[1])
+    return images
 
 def main():
     parser = argparse.ArgumentParser(description="Generate GitHub Actions matrix for container builds")
@@ -37,12 +39,16 @@ def main():
         dockerfile_path = os.path.join(image_path, "Dockerfile")
 
         if os.path.isdir(image_path):
-            base_image = get_base_image(dockerfile_path)
-            
+            base_images = get_base_images(dockerfile_path)
+
             # Determine level
-            # Level 2 if base image depends on our internal hosted images (e.g. actions-runner base)
+            # Level 2 if any FROM depends on our internal hosted images (e.g. actions-runner base)
             # Proxied images (docker-hub, etc.) are considered external (Level 1)
-            is_level_2 = base_image and "/docker-hosted/" in base_image and base_image.startswith(internal_registry_prefix)
+            # Multi-stage builds may have both external and internal FROM lines
+            is_level_2 = any(
+                "/docker-hosted/" in img and img.startswith(internal_registry_prefix)
+                for img in base_images
+            )
             
             # Filter based on requested level
             if args.level == 1 and is_level_2:
