@@ -1,3 +1,11 @@
+# Stage: Create Java truststore with Homelab Root CA baked in.
+# Bazel's embedded JVM uses its own cacerts and ignores the OS trust store,
+# so we need a JKS truststore that includes the Homelab Root CA.
+FROM eclipse-temurin:21-jre AS java-cacerts
+COPY nexus-ca.crt /tmp/nexus-ca.crt
+RUN keytool -importcert -cacerts -storepass changeit -noprompt \
+      -alias homelab-root-ca -file /tmp/nexus-ca.crt
+
 ARG VERSION=2.331.0
 
 FROM nexus.gillouche.homelab/docker-hosted/base/actions-runner:${VERSION}
@@ -7,11 +15,14 @@ USER root
 
 RUN apk update && apk add --no-cache xz coreutils ca-certificates
 
-# 1. Install Nexus CA certificate
+# 1. Install Nexus CA certificate (OS-level trust for curl, Python, Node, etc.)
 COPY nexus-ca.crt /usr/local/share/ca-certificates/nexus-ca.crt
 RUN trust anchor /usr/local/share/ca-certificates/nexus-ca.crt || update-ca-certificates
 
-# 2. Create /nix directory and give ownership to runner
+# 2. Install pre-built Java truststore with Homelab Root CA (for Bazel's JVM)
+COPY --from=java-cacerts /opt/java/openjdk/lib/security/cacerts /etc/ssl/certs/java/cacerts
+
+# 3. Create /nix directory and give ownership to runner
 RUN mkdir -m 0755 /nix && chown runner:runner /nix
 
 # Use ENV HOME so PATH and config paths stay correct

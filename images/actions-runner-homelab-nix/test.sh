@@ -48,4 +48,13 @@ else
     exit 1
 fi
 
+# Test: Java truststore with Homelab Root CA exists
+echo "Testing Java truststore..."
+if run_cmd "test -f /etc/ssl/certs/java/cacerts"; then
+    echo "PASS: Java truststore exists at /etc/ssl/certs/java/cacerts"
+else
+    echo "FAIL: Java truststore not found at /etc/ssl/certs/java/cacerts"
+    exit 1
+fi
+
 echo "All ARC runner smoke tests passed."
