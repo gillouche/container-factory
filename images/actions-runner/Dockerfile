@@ -1,4 +1,4 @@
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:b5f4a33fa2fee95dd79535e069bafd60f52085c5786677da5724414374c5194c AS build
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:c9a27ee8d2d441f941de2f8e4c2c8ddb0b313adb5d14ab934b19f467b9ea8083 AS build
 
 ARG TARGETARCH
 ARG VERSION=2.331.0
@@ -38,7 +38,7 @@ RUN DOCKER_ARCH="${TARGETARCH}" \
     "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:b5f4a33fa2fee95dd79535e069bafd60f52085c5786677da5724414374c5194c
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:c9a27ee8d2d441f941de2f8e4c2c8ddb0b313adb5d14ab934b19f467b9ea8083
 
 ARG VERSION=2.331.0
 ARG RUNNER_UID=1001
