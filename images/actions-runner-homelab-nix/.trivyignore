@@ -52,3 +52,15 @@ GHSA-9g55-pg62-m8hh # crossbeam-channel (Data leak)
 GHSA-wgrg-5h56-jg27 # nix (Out-of-bounds write)
 CVE-2026-23519  # cmov (Side-channel)
 CVE-2025-11695  # mongodb (Certificate validation bypass)
+
+# -----------------
+# Actions Runner Bundled Node.js Dependencies (actions/runner v2.331.0)
+# -----------------
+# These vulnerabilities are in npm packages bundled within the runner binary itself.
+# They will be fixed when GitHub releases a new runner version with updated dependencies.
+
+# minimatch - ReDoS via repeated wildcards with non-matching literal in pattern
+CVE-2026-26996
+
+# tar (node-tar) - Arbitrary File Read/Write via Hardlink Target Escape Through Symlink Chain
+CVE-2026-26960
