@@ -19,14 +19,14 @@ jobs:
           token: ${{ secrets.PR_TOKEN }}
 
       - name: Setup Nix Cache Profile
-        uses: gillouche/homelab-ci/actions/setup-aws-profile@f5723a407eabc03e294948b3b1dd86c880c7c77a # main
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@76ca393b8d2619aa9e88cba7c3869889919fafa3 # main
         with:
           profile: "nix"
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@f5723a407eabc03e294948b3b1dd86c880c7c77a # main
+        uses: gillouche/homelab-ci/actions/setup-nix-env@76ca393b8d2619aa9e88cba7c3869889919fafa3 # main
 
       - name: Check pinned dependencies
         id: check
@@ -67,7 +67,7 @@ jobs:
 
       - name: Notify Discord — updates available
         if: steps.check.outputs.updates != '0'
-        uses: gillouche/homelab-ci/actions/discord-notify@f5723a407eabc03e294948b3b1dd86c880c7c77a # main
+        uses: gillouche/homelab-ci/actions/discord-notify@76ca393b8d2619aa9e88cba7c3869889919fafa3 # main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
           title: "Pinned Dependency Updates Available"
@@ -87,7 +87,7 @@ jobs:
 
       - name: Notify Discord — unpinned dependencies only
         if: steps.check.outputs.updates == '0' && steps.check.outputs.warnings != '0'
-        uses: gillouche/homelab-ci/actions/discord-notify@f5723a407eabc03e294948b3b1dd86c880c7c77a # main
+        uses: gillouche/homelab-ci/actions/discord-notify@76ca393b8d2619aa9e88cba7c3869889919fafa3 # main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
           title: "Unpinned Dependencies Detected"
@@ -107,7 +107,7 @@ jobs:
 
       - name: Notify Discord — all up to date
         if: steps.check.outputs.updates == '0' && steps.check.outputs.warnings == '0'
-        uses: gillouche/homelab-ci/actions/discord-notify@f5723a407eabc03e294948b3b1dd86c880c7c77a # main
+        uses: gillouche/homelab-ci/actions/discord-notify@76ca393b8d2619aa9e88cba7c3869889919fafa3 # main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS }}
           title: "All Pinned Dependencies Up To Date"
