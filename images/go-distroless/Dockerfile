@@ -1,7 +1,7 @@
 ARG VERSION=1.26.0
 FROM nexus.gillouche.homelab/docker-hub/golang:${VERSION}-trixie AS donor
 
-FROM gcr.io/distroless/static-debian13:nonroot@sha256:0376b514983f02c630de9ed8abadd33968ddb778f9f383412a12babe639cbaaa
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:f512d819b8f109f2375e8b51d8cfd8aafe81034bc3e319740128b7d7f70d5036
 
 ARG VERSION
 
