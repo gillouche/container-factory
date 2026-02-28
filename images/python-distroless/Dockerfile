@@ -5,7 +5,7 @@ FROM nexus.gillouche.homelab/docker-hub/python:${VERSION}-slim-trixie AS donor
 # hadolint ignore=DL3013
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-FROM gcr.io/distroless/cc-debian13:nonroot@sha256:84fcd3c223b144b0cb6edc5ecc75641819842a9679a3a58fd6294bec47532bf7
+FROM gcr.io/distroless/cc-debian13:nonroot@sha256:4cf9e68a5cbd8c9623480b41d5ed6052f028c44cc29f91b21590613ab8bec824
 
 ARG VERSION
 
