@@ -103,6 +103,7 @@ for VERSION in $VARIANTS; do
     docker buildx build \
         --load \
         --platform linux/amd64 \
+        --cache-from "type=registry,ref=$CACHE_IMAGE:$VERSION" \
         --build-arg VERSION="$VERSION" \
         --build-arg SOURCE_DATE_EPOCH="$GIT_DATE" \
         --tag "$LOCAL_TAG" \

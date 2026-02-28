@@ -13,17 +13,14 @@ FROM nexus.gillouche.homelab/docker-hosted/base/actions-runner:${VERSION}
 # Switch to root to configure Nix and CA certificates
 USER root
 
-RUN apk update && apk add --no-cache xz coreutils ca-certificates
-
-# 1. Install Nexus CA certificate (OS-level trust for curl, Python, Node, etc.)
+# Copy certificates first so the RUN layer can use them
 COPY nexus-ca.crt /usr/local/share/ca-certificates/nexus-ca.crt
-RUN trust anchor /usr/local/share/ca-certificates/nexus-ca.crt || update-ca-certificates
-
-# 2. Install pre-built Java truststore with Homelab Root CA (for Bazel's JVM)
 COPY --from=java-cacerts /opt/java/openjdk/lib/security/cacerts /etc/ssl/certs/java/cacerts
 
-# 3. Create /nix directory and give ownership to runner
-RUN mkdir -m 0755 /nix && chown runner:runner /nix
+# Install packages, trust CA, and prepare /nix in a single layer
+RUN apk update && apk add --no-cache xz coreutils ca-certificates && \
+    (trust anchor /usr/local/share/ca-certificates/nexus-ca.crt || update-ca-certificates) && \
+    mkdir -m 0755 /nix && chown runner:runner /nix
 
 # Use ENV HOME so PATH and config paths stay correct
 ENV HOME=/home/runner
