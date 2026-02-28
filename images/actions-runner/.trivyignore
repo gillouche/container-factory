@@ -32,6 +32,12 @@ CVE-2025-64756
 # minimatch - ReDoS via repeated wildcards with non-matching literal in pattern
 CVE-2026-26996
 
+# minimatch - ReDoS via unbounded recursive backtracking in matchOne()
+CVE-2026-27903
+
+# minimatch - ReDoS via catastrophic backtracking in nested extglobs
+CVE-2026-27904
+
 # tar (node-tar) - Arbitrary File Read/Write via Hardlink Target Escape Through Symlink Chain
 CVE-2026-26960
 
@@ -43,3 +49,7 @@ CVE-2026-26960
 
 # crypto/tls - TLS session resumption DoS
 CVE-2025-68121
+
+# go.opentelemetry.io/otel/sdk - Arbitrary code execution via PATH hijacking (fixed in v1.40.0)
+CVE-2026-24051
+

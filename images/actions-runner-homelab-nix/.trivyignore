@@ -28,6 +28,7 @@ CVE-2026-24842  # tar (Path traversal)
 # Container Runtime & Docker (bundled in runner)
 # These affect runc, containerd (CVE-2025-52881 escape), and golang stdlib issues.
 CVE-2025-68121  # golang crypto/tls (DoS)
+CVE-2026-24051  # go.opentelemetry.io/otel/sdk (PATH hijacking, fixed in v1.40.0)
 
 # -----------------
 # Nix Installer Bundled Tools (Rust/Go dependencies in /nix/store)
@@ -62,6 +63,12 @@ GHSA-47qc-857f-7w7f # pyo3 (Type confusion with abi3 subclass access)
 
 # minimatch - ReDoS via repeated wildcards with non-matching literal in pattern
 CVE-2026-26996
+
+# minimatch - ReDoS via unbounded recursive backtracking in matchOne()
+CVE-2026-27903
+
+# minimatch - ReDoS via catastrophic backtracking in nested extglobs
+CVE-2026-27904
 
 # tar (node-tar) - Arbitrary File Read/Write via Hardlink Target Escape Through Symlink Chain
 CVE-2026-26960
