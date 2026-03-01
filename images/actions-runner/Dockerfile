@@ -60,8 +60,6 @@ USER root
 # Trust Homelab Root CA so APK and curl can reach Nexus
 COPY --from=tls /certs/wolfi-ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-RUN sed -i 's|https://apk.cgr.dev|https://nexus.gillouche.homelab/repository/chainguard-apk|g' /etc/apk/repositories || true
-
 RUN apk update && apk add --no-cache \
     bash \
     busybox-full \
