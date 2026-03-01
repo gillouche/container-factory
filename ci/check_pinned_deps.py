@@ -15,6 +15,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Actions allowed to use branch references (e.g. @main) without triggering
+# unpinned-dependency warnings.  Each entry is matched as a prefix against the
+# action name so "gillouche/homelab-ci" covers all sub-paths like
+# "gillouche/homelab-ci/actions/discord-notify".
+IGNORED_ACTIONS = [
+    "gillouche/homelab-ci",
+]
+
 
 def find_repo_root():
     """Find the repository root (directory containing .git)."""
@@ -102,6 +110,10 @@ def find_action_pins(root):
 
             # Skip local actions (./)
             if action.startswith("./"):
+                continue
+
+            # Skip actions on the ignore list (allowed to use @main)
+            if any(action.startswith(prefix) for prefix in IGNORED_ACTIONS):
                 continue
 
             # Extract tag comment if present (e.g., "# v4.2.2" or "# main")

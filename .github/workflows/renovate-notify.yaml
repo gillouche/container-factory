@@ -12,7 +12,7 @@ jobs:
     if: (startsWith(github.head_ref, 'renovate/') || github.event.pull_request.user.login == 'renovate[bot]') && github.repository_owner == 'gillouche'
     runs-on: ubuntu-latest
     steps:
-      - uses: gillouche/homelab-ci/actions/renovate-notify@51c95ee914ecc2f0689c12a91962bd66a249a706 # main
+      - uses: gillouche/homelab-ci/actions/renovate-notify@main
         with:
           webhook: ${{ secrets.DISCORD_RENOVATE_WEBHOOK }}
           pr-title: ${{ github.event.pull_request.title }}
