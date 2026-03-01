@@ -1,4 +1,4 @@
-FROM nexus.gillouche.homelab/ghcr-proxy/actions/actions-runner:latest@sha256:8c3f5970b8ceb90cbd3e89b80c6806bb74d9c31686e9177c743323a4539d12f5
+FROM nexus.gillouche.homelab/ghcr-proxy/actions/actions-runner:latest
 
 # Switch to root to install dependencies
 USER root

@@ -1,6 +1,6 @@
 FROM nexus.gillouche.homelab/docker-hosted/base/tls-bundle:latest AS tls
 
-FROM nexus.gillouche.homelab/cgr-proxy/chainguard/wolfi-base:latest@sha256:9925d3017788558fa8f27e8bb160b791e56202b60c91fbcc5c867de3175986c8 AS build
+FROM nexus.gillouche.homelab/cgr-proxy/chainguard/wolfi-base:latest AS build
 
 ARG TARGETARCH
 ARG VERSION=2.331.0
@@ -44,7 +44,7 @@ RUN DOCKER_ARCH="${TARGETARCH}" \
     "https://${DOWNLOAD_PROXY}/github-releases/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
-FROM nexus.gillouche.homelab/cgr-proxy/chainguard/wolfi-base:latest@sha256:9925d3017788558fa8f27e8bb160b791e56202b60c91fbcc5c867de3175986c8
+FROM nexus.gillouche.homelab/cgr-proxy/chainguard/wolfi-base:latest
 
 ARG VERSION=2.331.0
 ARG RUNNER_UID=1001

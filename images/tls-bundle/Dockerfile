@@ -1,6 +1,6 @@
 # Stage 1: Build Wolfi system CA bundle with Homelab Root CA appended.
 # This bundle is used by APK, curl, and other TLS clients in Wolfi-based images.
-FROM nexus.gillouche.homelab/cgr-proxy/chainguard/wolfi-base:latest@sha256:9925d3017788558fa8f27e8bb160b791e56202b60c91fbcc5c867de3175986c8 AS wolfi
+FROM nexus.gillouche.homelab/cgr-proxy/chainguard/wolfi-base:latest AS wolfi
 COPY nexus-ca.crt /tmp/nexus-ca.crt
 RUN cat /tmp/nexus-ca.crt >> /etc/ssl/certs/ca-certificates.crt
 

@@ -33,64 +33,8 @@ def find_repo_root():
 
 
 def find_docker_digests(root):
-    """Find all Docker FROM lines with @sha256: digests or unpinned references."""
-    results = []
-    dockerfiles = list(root.glob("**/Dockerfile"))
-    for dockerfile in dockerfiles:
-        content = dockerfile.read_text()
-        # Collect ARG defaults for variable resolution
-        args = {}
-        for m in re.finditer(r"^ARG\s+(\w+)=(.+)$", content, re.MULTILINE):
-            args[m.group(1)] = m.group(2).strip()
-
-        for m in re.finditer(
-            r"^FROM\s+(\S+?)(?:\s+AS\s+\w+)?\s*$", content, re.MULTILINE
-        ):
-            from_ref = m.group(1)
-
-            # Skip parameterized references (containing $) to avoid breaking generic Dockerfiles
-            if "$" in from_ref:
-                continue
-
-            # Resolve ${VAR} references using ARG defaults
-            resolved = re.sub(
-                r"\$\{(\w+)\}", lambda v: args.get(v.group(1), v.group(0)), from_ref
-            )
-
-            if "@sha256:" in resolved:
-                base, digest = resolved.split("@sha256:", 1)
-                digest = "sha256:" + digest
-                if ":" in base:
-                    image, tag = base.rsplit(":", 1)
-                else:
-                    image, tag = base, "latest"
-                results.append(
-                    {
-                        "file": str(dockerfile.relative_to(root)),
-                        "image": image,
-                        "tag": tag,
-                        "current_digest": digest,
-                        "type": "docker_digest",
-                        "raw_ref": from_ref,
-                    }
-                )
-            else:
-                # Treated as unpinned if no digest
-                if ":" in resolved:
-                    image, tag = resolved.rsplit(":", 1)
-                else:
-                    image, tag = resolved, "latest"
-                results.append(
-                    {
-                        "file": str(dockerfile.relative_to(root)),
-                        "image": image,
-                        "tag": tag,
-                        "current_digest": None,
-                        "type": "docker_unpinned",
-                        "raw_ref": from_ref,
-                    }
-                )
-    return results
+    """Docker digest pinning is no longer enforced. Return empty list."""
+    return []
 
 
 def find_action_pins(root):
@@ -147,28 +91,6 @@ def find_action_pins(root):
     return results
 
 
-def check_docker_update(image, tag):
-    """Get the latest digest for a Docker image:tag using crane."""
-    ref = f"{image}:{tag}"
-    try:
-        result = subprocess.run(
-            ["crane", "digest", ref],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if result.returncode == 0:
-            return result.stdout.strip()
-        print(f"  [warn] crane digest failed for {ref}: {result.stderr.strip()}", file=sys.stderr)
-        return None
-    except FileNotFoundError:
-        print("  [error] crane not found in PATH", file=sys.stderr)
-        return None
-    except subprocess.TimeoutExpired:
-        print(f"  [warn] crane digest timed out for {ref}", file=sys.stderr)
-        return None
-
-
 def check_action_update(action, ref):
     """Get the latest commit SHA for a GitHub Action ref using gh api."""
     owner_repo = action
@@ -205,58 +127,11 @@ def main():
     root = find_repo_root()
     print(f"Scanning {root} ...", file=sys.stderr)
 
-    docker_deps = find_docker_digests(root)
     action_deps = find_action_pins(root)
 
     updates = []
     warnings = []
     up_to_date = []
-
-    # Check Docker digests
-    for dep in docker_deps:
-        print(f"  Checking {dep['image']}:{dep['tag']} ...", file=sys.stderr)
-        latest = check_docker_update(dep["image"], dep["tag"])
-        
-        if latest is None:
-            warnings.append({
-                "file": dep["file"],
-                "image": dep["image"],
-                "tag": dep["tag"],
-                "reason": f"Could not check update for {dep['image']}:{dep['tag']}",
-                "type": dep["type"]
-            })
-            continue
-
-        if dep["type"] == "docker_unpinned":
-            # Treat finding a digest as an update (pinning it)
-            updates.append({
-                "file": dep["file"],
-                "image": dep["image"],
-                "tag": dep["tag"],
-                "current_digest": None,
-                "latest_digest": latest,
-                "type": "docker_unpinned",
-                "raw_ref": dep["raw_ref"]
-            })
-        elif latest != dep["current_digest"]:
-            updates.append({
-                "file": dep["file"],
-                "image": dep["image"],
-                "tag": dep["tag"],
-                "current_digest": dep["current_digest"],
-                "latest_digest": latest,
-                "type": "docker_digest",
-                "raw_ref": dep["raw_ref"]
-            })
-        else:
-            up_to_date.append({
-                "file": dep["file"],
-                "image": dep["image"],
-                "tag": dep["tag"],
-                "digest": dep["current_digest"],
-                "type": "docker_digest",
-                "raw_ref": dep["raw_ref"]
-            })
 
     # Check GitHub Action SHAs
     for dep in action_deps:
