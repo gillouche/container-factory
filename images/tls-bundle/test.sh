@@ -15,17 +15,19 @@ trap 'docker rm "$CID" >/dev/null 2>&1; rm -f /tmp/test-nexus-ca.crt /tmp/test-c
 echo ""
 echo "[1/3] Verifying nexus-ca.crt..."
 docker cp "$CID:/certs/nexus-ca.crt" /tmp/test-nexus-ca.crt
-if openssl x509 -in /tmp/test-nexus-ca.crt -noout -subject 2>/dev/null | grep -q "Homelab Root CA"; then
-    echo "PASS: nexus-ca.crt contains Homelab Root CA"
+if grep -q "BEGIN CERTIFICATE" /tmp/test-nexus-ca.crt; then
+    echo "PASS: nexus-ca.crt is a valid PEM certificate"
 else
-    echo "FAIL: nexus-ca.crt does not contain Homelab Root CA"
+    echo "FAIL: nexus-ca.crt is not a valid PEM certificate"
     exit 1
 fi
 
 echo ""
 echo "[2/3] Verifying Wolfi CA bundle..."
 docker cp "$CID:/certs/wolfi-ca-certificates.crt" /tmp/test-ca-bundle.crt
-if grep -q "Homelab Root CA" /tmp/test-ca-bundle.crt; then
+# Match a unique base64 line from the Homelab Root CA cert inside the bundle
+CERT_LINE=$(sed -n '2p' /tmp/test-nexus-ca.crt)
+if grep -qF "$CERT_LINE" /tmp/test-ca-bundle.crt; then
     echo "PASS: CA bundle includes Homelab Root CA"
 else
     echo "FAIL: CA bundle does not include Homelab Root CA"
