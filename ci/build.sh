@@ -148,9 +148,6 @@ for VERSION in $VARIANTS; do
         fi
     fi
 
-    # Cleanup local scan image
-    docker rmi "$LOCAL_TAG" || true
-
     # ---------------------------------------------------------
     # 3. Multi-Arch Build & Push
     # ---------------------------------------------------------
@@ -200,6 +197,7 @@ for VERSION in $VARIANTS; do
         if [ -n "${GITHUB_OUTPUT:-}" ]; then
             echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
             echo "image_full=$FULL_IMAGE:$VERSION" >> "$GITHUB_OUTPUT"
+            echo "scan_image=$LOCAL_TAG" >> "$GITHUB_OUTPUT"
             echo "pushed=true" >> "$GITHUB_OUTPUT"
         fi
     elif [ "$PUSH_IMAGES" = "true" ] && [ "$PUSH_NECESSARY" = "false" ]; then
@@ -209,6 +207,7 @@ for VERSION in $VARIANTS; do
             DIGEST=$(crane digest "$FULL_IMAGE:$VERSION" 2>/dev/null || true)
             echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
             echo "image_full=$FULL_IMAGE:$VERSION" >> "$GITHUB_OUTPUT"
+            echo "scan_image=$LOCAL_TAG" >> "$GITHUB_OUTPUT"
             echo "pushed=false" >> "$GITHUB_OUTPUT"
         fi
     else
@@ -216,7 +215,9 @@ for VERSION in $VARIANTS; do
         echo "Build Successful. Pushing disabled: $FULL_IMAGE:$VERSION"
         if [ -n "${GITHUB_OUTPUT:-}" ]; then
             echo "image_full=$FULL_IMAGE:$VERSION" >> "$GITHUB_OUTPUT"
+            echo "scan_image=$LOCAL_TAG" >> "$GITHUB_OUTPUT"
             echo "pushed=false" >> "$GITHUB_OUTPUT"
         fi
     fi
+
 done

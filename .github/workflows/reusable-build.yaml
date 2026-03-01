@@ -69,9 +69,13 @@ jobs:
       - name: Trivy Scan
         uses: gillouche/homelab-ci/actions/trivy-scan@main
         with:
-          image: ${{ steps.build.outputs.image_full }}
+          image: ${{ steps.build.outputs.scan_image }}
           trivyignore: images/${{ inputs.image }}/.trivyignore
           discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
+
+      - name: Cleanup local scan image
+        if: always()
+        run: docker rmi "${{ steps.build.outputs.scan_image }}" 2>/dev/null || true
 
       - name: Push Notification
         if: steps.build.outputs.pushed == 'true'
