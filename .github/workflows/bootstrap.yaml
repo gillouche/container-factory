@@ -23,13 +23,20 @@ jobs:
       - name: Inject Nexus CA (Bootstrap)
         run: |
           # Use busybox from Docker Hub (no auth required) to inject the cert
-          cat images/actions-runner-homelab-nix/nexus-ca.crt | docker run --rm -i \
+          cat images/tls-bundle/nexus-ca.crt | docker run --rm -i \
             -v /etc/docker/certs.d:/certs \
             nexus.gillouche.homelab/docker-hub/busybox sh -c "mkdir -p /certs/nexus.gillouche.homelab && cat > /certs/nexus.gillouche.homelab/ca.crt"
           echo "Injected CA into Docker Daemon certificate store"
 
       - name: Login to Nexus
         run: echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab -u "${{ secrets.NEXUS_USERNAME }}" --password-stdin
+
+      - name: Build TLS Bundle
+        run: |
+          docker build \
+             -t nexus.gillouche.homelab/docker-hosted/base/tls-bundle:1 \
+             -t nexus.gillouche.homelab/docker-hosted/base/tls-bundle:latest \
+             images/tls-bundle
 
       - name: Build Base Runner (Wolfi)
         run: |
@@ -55,9 +62,13 @@ jobs:
       - name: Push Runner Images
         if: inputs.push
         run: |
+          # Push TLS Bundle
+          docker push nexus.gillouche.homelab/docker-hosted/base/tls-bundle:1
+          docker push nexus.gillouche.homelab/docker-hosted/base/tls-bundle:latest
+
           # Push Base
           docker push nexus.gillouche.homelab/docker-hosted/base/actions-runner:${{ inputs.version }}
-          
+
           # Push Nix/Latest
           docker push nexus.gillouche.homelab/docker-hosted/base/actions-runner-homelab-nix:${{ inputs.version }}
           docker push nexus.gillouche.homelab/docker-hosted/base/actions-runner-homelab-nix:latest

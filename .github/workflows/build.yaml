@@ -31,11 +31,12 @@ jobs:
     outputs:
       matrix-l1: ${{ steps.set-matrix-l1.outputs.matrix }}
       matrix-l2: ${{ steps.set-matrix-l2.outputs.matrix }}
+      matrix-l3: ${{ steps.set-matrix-l3.outputs.matrix }}
       push: ${{ steps.set-push.outputs.push }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      
+
       - name: Send Start Notification
         continue-on-error: true
         uses: gillouche/homelab-ci/actions/discord-notify@7f7f5d25e4a420cc363ce69cc470df76d1f1ab31 # main
@@ -81,7 +82,14 @@ jobs:
           { set +x; } 2>/dev/null
           MATRIX=$(python3 ci/generate_matrix.py --level 2)
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-      
+
+      - name: Generate Matrix Level 3
+        id: set-matrix-l3
+        run: |
+          { set +x; } 2>/dev/null
+          MATRIX=$(python3 ci/generate_matrix.py --level 3)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
       - name: Determine Push Policy
         id: set-push
         run: |
@@ -110,8 +118,8 @@ jobs:
     name: Build L2
     needs: [prepare, build-level-1]
     if: |
-      always() && 
-      (needs.build-level-1.result == 'success' || needs.build-level-1.result == 'skipped') && 
+      always() &&
+      (needs.build-level-1.result == 'success' || needs.build-level-1.result == 'skipped') &&
       fromJson(needs.prepare.outputs.matrix-l2).include[0] != null
     strategy:
       fail-fast: false
@@ -123,11 +131,28 @@ jobs:
       push: ${{ needs.prepare.outputs.push == 'true' }}
     secrets: inherit
 
+  build-level-3:
+    name: Build L3
+    needs: [prepare, build-level-2]
+    if: |
+      always() &&
+      (needs.build-level-2.result == 'success' || needs.build-level-2.result == 'skipped') &&
+      fromJson(needs.prepare.outputs.matrix-l3).include[0] != null
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix-l3) }}
+    uses: ./.github/workflows/reusable-build.yaml
+    with:
+      image: ${{ matrix.image }}
+      version: ${{ matrix.version }}
+      push: ${{ needs.prepare.outputs.push == 'true' }}
+    secrets: inherit
+
   notify-completion:
     name: Notify Completion
     runs-on: container-factory-runner
     if: always()
-    needs: [prepare, build-level-1, build-level-2]
+    needs: [prepare, build-level-1, build-level-2, build-level-3]
     steps:
       - name: Determine Status
         id: status
@@ -145,6 +170,9 @@ jobs:
           elif [[ "${{ needs.build-level-2.result }}" == "failure" || "${{ needs.build-level-2.result }}" == "cancelled" ]]; then
             STATUS="failure"
             MESSAGE="CI Pipeline Failed (Level 2)"
+          elif [[ "${{ needs.build-level-3.result }}" == "failure" || "${{ needs.build-level-3.result }}" == "cancelled" ]]; then
+            STATUS="failure"
+            MESSAGE="CI Pipeline Failed (Level 3)"
           fi
 
           echo "status=$STATUS" >> $GITHUB_OUTPUT
@@ -165,4 +193,3 @@ jobs:
               {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
               {"name": "Actor", "value": "${{ github.actor }}", "inline": true}
             ]
-

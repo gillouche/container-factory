@@ -1,3 +1,5 @@
+FROM nexus.gillouche.homelab/docker-hosted/base/tls-bundle:latest AS tls
+
 FROM nexus.gillouche.homelab/cgr-proxy/chainguard/wolfi-base:latest@sha256:9925d3017788558fa8f27e8bb160b791e56202b60c91fbcc5c867de3175986c8 AS build
 
 ARG TARGETARCH
@@ -9,6 +11,9 @@ ARG BUILDX_VERSION=0.31.1
 ARG DOWNLOAD_PROXY=nexus.gillouche.homelab/repository
 
 USER root
+
+# Trust Homelab Root CA so curl can reach Nexus
+COPY --from=tls /certs/wolfi-ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 RUN apk update && apk add --no-cache curl unzip
 
@@ -51,6 +56,9 @@ ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV ImageOS=wolfi
 
 USER root
+
+# Trust Homelab Root CA so APK and curl can reach Nexus
+COPY --from=tls /certs/wolfi-ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 RUN sed -i 's|https://apk.cgr.dev|https://nexus.gillouche.homelab/repository/chainguard-apk|g' /etc/apk/repositories || true
 

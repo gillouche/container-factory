@@ -1,13 +1,7 @@
 ARG VERSION=2.331.0
 ARG DOWNLOAD_PROXY=nexus.gillouche.homelab/repository
 
-# Stage: Create Java truststore with Homelab Root CA baked in.
-# Bazel's embedded JVM uses its own cacerts and ignores the OS trust store,
-# so we need a JKS truststore that includes the Homelab Root CA.
-FROM nexus.gillouche.homelab/docker-hub/eclipse-temurin:21-jre AS java-cacerts
-COPY nexus-ca.crt /tmp/nexus-ca.crt
-RUN keytool -importcert -cacerts -storepass changeit -noprompt \
-      -alias homelab-root-ca -file /tmp/nexus-ca.crt
+FROM nexus.gillouche.homelab/docker-hosted/base/tls-bundle:latest AS tls
 
 FROM nexus.gillouche.homelab/docker-hosted/base/actions-runner:${VERSION}
 
@@ -16,13 +10,12 @@ ARG DOWNLOAD_PROXY
 # Switch to root to configure Nix and CA certificates
 USER root
 
-# Copy certificates first so the RUN layer can use them
-COPY nexus-ca.crt /usr/local/share/ca-certificates/nexus-ca.crt
-COPY --from=java-cacerts /opt/java/openjdk/lib/security/cacerts /etc/ssl/certs/java/cacerts
+# Java truststore and raw cert from centralized TLS bundle
+COPY --from=tls /certs/java-cacerts /etc/ssl/certs/java/cacerts
+COPY --from=tls /certs/nexus-ca.crt /usr/local/share/ca-certificates/nexus-ca.crt
 
-# Install packages, trust CA, and prepare /nix in a single layer
-RUN apk update && apk add --no-cache xz coreutils ca-certificates && \
-    (trust anchor /usr/local/share/ca-certificates/nexus-ca.crt || update-ca-certificates) && \
+# Install packages and prepare /nix
+RUN apk update && apk add --no-cache xz coreutils && \
     mkdir -m 0755 /nix && chown runner:runner /nix
 
 # Use ENV HOME so PATH and config paths stay correct
