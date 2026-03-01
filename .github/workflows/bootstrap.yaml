@@ -25,7 +25,7 @@ jobs:
           # Use busybox from Docker Hub (no auth required) to inject the cert
           cat images/actions-runner-homelab-nix/nexus-ca.crt | docker run --rm -i \
             -v /etc/docker/certs.d:/certs \
-            busybox sh -c "mkdir -p /certs/nexus.gillouche.homelab && cat > /certs/nexus.gillouche.homelab/ca.crt"
+            nexus.gillouche.homelab/docker-hub/busybox sh -c "mkdir -p /certs/nexus.gillouche.homelab && cat > /certs/nexus.gillouche.homelab/ca.crt"
           echo "Injected CA into Docker Daemon certificate store"
 
       - name: Login to Nexus

@@ -1,4 +1,5 @@
 ARG VERSION=2.331.0
+ARG DOWNLOAD_PROXY=nexus.gillouche.homelab/repository
 
 # Stage: Create Java truststore with Homelab Root CA baked in.
 # Bazel's embedded JVM uses its own cacerts and ignores the OS trust store,
@@ -9,6 +10,8 @@ RUN keytool -importcert -cacerts -storepass changeit -noprompt \
       -alias homelab-root-ca -file /tmp/nexus-ca.crt
 
 FROM nexus.gillouche.homelab/docker-hosted/base/actions-runner:${VERSION}
+
+ARG DOWNLOAD_PROXY
 
 # Switch to root to configure Nix and CA certificates
 USER root
@@ -34,14 +37,14 @@ SHELL ["/bin/bash", "-c"]
 
 RUN export NIX_CONFIG="filter-syscalls = false" && \
     curl --proto '=https' --tlsv1.2 -sSf -L \
-    "https://releases.nixos.org/nix/nix-${NIX_VERSION}/install" \
+    "https://${DOWNLOAD_PROXY}/nixos-releases/nix/nix-${NIX_VERSION}/install" \
     | sh -s -- --no-daemon && \
     export PATH="${HOME}/.nix-profile/bin:$PATH" && \
     mkdir -p "${HOME}/.config/nix" && printf '%s\n' \
     'experimental-features = nix-command flakes' \
     'sandbox = false' \
     'filter-syscalls = false' \
-    'substituters = s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http&profile=nix https://cache.nixos.org/' \
+    'substituters = s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http&profile=nix https://nexus.gillouche.homelab/repository/nix-cache-proxy/ https://cache.nixos.org/' \
     'trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=' \
     'require-sigs = false' \
     > "${HOME}/.config/nix/nix.conf" && \

@@ -1,4 +1,4 @@
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:9925d3017788558fa8f27e8bb160b791e56202b60c91fbcc5c867de3175986c8 AS build
+FROM nexus.gillouche.homelab/cgr-proxy/chainguard/wolfi-base:latest@sha256:9925d3017788558fa8f27e8bb160b791e56202b60c91fbcc5c867de3175986c8 AS build
 
 ARG TARGETARCH
 ARG VERSION=2.331.0
@@ -6,6 +6,7 @@ ARG RUNNER_CONTAINER_HOOKS_VERSION=0.8.1
 ARG RUNNER_CONTAINER_HOOKS_NOVOLUME_VERSION=0.8.1
 ARG DOCKER_VERSION=29.2.0
 ARG BUILDX_VERSION=0.31.1
+ARG DOWNLOAD_PROXY=nexus.gillouche.homelab/repository
 
 USER root
 
@@ -15,30 +16,30 @@ WORKDIR /actions-runner
 
 RUN RUNNER_ARCH="${TARGETARCH}" \
     && if [ "$RUNNER_ARCH" = "amd64" ]; then RUNNER_ARCH="x64"; fi \
-    && curl -f -L -o runner.tar.gz "https://github.com/actions/runner/releases/download/v${VERSION}/actions-runner-linux-${RUNNER_ARCH}-${VERSION}.tar.gz" \
+    && curl -f -L -o runner.tar.gz "https://${DOWNLOAD_PROXY}/github-releases/actions/runner/releases/download/v${VERSION}/actions-runner-linux-${RUNNER_ARCH}-${VERSION}.tar.gz" \
     && tar xzf ./runner.tar.gz \
     && rm runner.tar.gz
 
-RUN curl -f -L -o runner-container-hooks.zip "https://github.com/actions/runner-container-hooks/releases/download/v${RUNNER_CONTAINER_HOOKS_VERSION}/actions-runner-hooks-k8s-${RUNNER_CONTAINER_HOOKS_VERSION}.zip" \
+RUN curl -f -L -o runner-container-hooks.zip "https://${DOWNLOAD_PROXY}/github-releases/actions/runner-container-hooks/releases/download/v${RUNNER_CONTAINER_HOOKS_VERSION}/actions-runner-hooks-k8s-${RUNNER_CONTAINER_HOOKS_VERSION}.zip" \
     && unzip ./runner-container-hooks.zip -d ./k8s \
     && rm runner-container-hooks.zip
 
-RUN curl -f -L -o runner-container-hooks.zip "https://github.com/actions/runner-container-hooks/releases/download/v${RUNNER_CONTAINER_HOOKS_NOVOLUME_VERSION}/actions-runner-hooks-k8s-${RUNNER_CONTAINER_HOOKS_NOVOLUME_VERSION}.zip" \
+RUN curl -f -L -o runner-container-hooks.zip "https://${DOWNLOAD_PROXY}/github-releases/actions/runner-container-hooks/releases/download/v${RUNNER_CONTAINER_HOOKS_NOVOLUME_VERSION}/actions-runner-hooks-k8s-${RUNNER_CONTAINER_HOOKS_NOVOLUME_VERSION}.zip" \
     && unzip ./runner-container-hooks.zip -d ./k8s-novolume \
     && rm runner-container-hooks.zip
 
 RUN DOCKER_ARCH="${TARGETARCH}" \
     && if [ "$DOCKER_ARCH" = "amd64" ]; then DOCKER_ARCH="x86_64"; fi \
     && if [ "$DOCKER_ARCH" = "arm64" ]; then DOCKER_ARCH="aarch64"; fi \
-    && curl -fLo docker.tgz "https://download.docker.com/linux/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz" \
+    && curl -fLo docker.tgz "https://${DOWNLOAD_PROXY}/docker-downloads/linux/static/stable/${DOCKER_ARCH}/docker-${DOCKER_VERSION}.tgz" \
     && tar zxvf docker.tgz \
     && rm -rf docker.tgz \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
-    "https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
+    "https://${DOWNLOAD_PROXY}/github-releases/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:9925d3017788558fa8f27e8bb160b791e56202b60c91fbcc5c867de3175986c8
+FROM nexus.gillouche.homelab/cgr-proxy/chainguard/wolfi-base:latest@sha256:9925d3017788558fa8f27e8bb160b791e56202b60c91fbcc5c867de3175986c8
 
 ARG VERSION=2.331.0
 ARG RUNNER_UID=1001
@@ -50,6 +51,8 @@ ENV ACTIONS_RUNNER_PRINT_LOG_TO_STDOUT=1
 ENV ImageOS=wolfi
 
 USER root
+
+RUN sed -i 's|https://apk.cgr.dev|https://nexus.gillouche.homelab/repository/chainguard-apk|g' /etc/apk/repositories || true
 
 RUN apk update && apk add --no-cache \
     bash \
