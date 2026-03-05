@@ -47,6 +47,9 @@ CVE-2026-26960
 # These vulnerabilities are in the Go standard library used to build Docker and Buildx.
 # They will be fixed when upstream Docker releases new versions with updated Go.
 
+# docker/cli - Uncontrolled Search Path Element on Windows (not exploitable on Linux)
+CVE-2025-15558
+
 # crypto/tls - TLS session resumption DoS
 CVE-2025-68121
 

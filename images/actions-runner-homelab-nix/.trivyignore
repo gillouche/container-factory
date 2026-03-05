@@ -27,6 +27,7 @@ CVE-2026-24842  # tar (Path traversal)
 
 # Container Runtime & Docker (bundled in runner)
 # These affect runc, containerd (CVE-2025-52881 escape), and golang stdlib issues.
+CVE-2025-15558  # docker/cli (Windows-only privilege escalation, not exploitable on Linux)
 CVE-2025-68121  # golang crypto/tls (DoS)
 CVE-2026-24051  # go.opentelemetry.io/otel/sdk (PATH hijacking, fixed in v1.40.0)
 
