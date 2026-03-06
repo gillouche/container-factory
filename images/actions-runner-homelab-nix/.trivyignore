@@ -75,4 +75,4 @@ CVE-2026-27904
 CVE-2026-26960
 
 # tar (node-tar) - Hardlink Path Traversal via Drive-Relative Linkpath
-GHSA-qffp-2rhf-9h96
+CVE-2026-29786
