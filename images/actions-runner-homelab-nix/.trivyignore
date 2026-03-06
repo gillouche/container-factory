@@ -73,3 +73,6 @@ CVE-2026-27904
 
 # tar (node-tar) - Arbitrary File Read/Write via Hardlink Target Escape Through Symlink Chain
 CVE-2026-26960
+
+# tar (node-tar) - Hardlink Path Traversal via Drive-Relative Linkpath
+GHSA-qffp-2rhf-9h96
