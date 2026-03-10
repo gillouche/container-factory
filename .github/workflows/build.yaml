@@ -48,9 +48,11 @@ jobs:
           message: "Building images"
           fields: |
             [
+              {"name": "Repository", "value": "${{ github.repository }}", "inline": true},
               {"name": "Ref", "value": "${{ github.ref_name }}", "inline": true},
-              {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
-              {"name": "Actor", "value": "${{ github.actor }}", "inline": true}
+              {"name": "Commit", "value": "`${{ github.sha }}`", "inline": false},
+              {"name": "Actor", "value": "${{ github.actor }}", "inline": true},
+              {"name": "Trigger", "value": "${{ github.event_name }}", "inline": true}
             ]
 
       - name: Setup Nix Cache Profile
@@ -189,7 +191,9 @@ jobs:
           message: ${{ steps.status.outputs.message }}
           fields: |
             [
+              {"name": "Repository", "value": "${{ github.repository }}", "inline": true},
               {"name": "Ref", "value": "${{ github.ref_name }}", "inline": true},
-              {"name": "Commit", "value": "${{ github.sha }}", "inline": true},
-              {"name": "Actor", "value": "${{ github.actor }}", "inline": true}
+              {"name": "Commit", "value": "`${{ github.sha }}`", "inline": false},
+              {"name": "Actor", "value": "${{ github.actor }}", "inline": true},
+              {"name": "Trigger", "value": "${{ github.event_name }}", "inline": true}
             ]
