@@ -22,6 +22,6 @@
     "images/typescript-distroless/VARIANTS": {
         "source": "docker_hub",
         "image": "library/node",
-        "tag_template": "{version}-slim-trixie"
+        "tag_template": "{version}-trixie-slim"
     }
 }

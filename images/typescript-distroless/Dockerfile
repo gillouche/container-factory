@@ -1,5 +1,5 @@
-ARG VERSION=24.14.0
-FROM nexus.gillouche.homelab/docker-hub/node:${VERSION}-slim-trixie AS donor
+ARG VERSION=25.8.1
+FROM nexus.gillouche.homelab/docker-hub/node:${VERSION}-trixie-slim AS donor
 
 # Install TypeScript and tsx globally for direct TS execution
 # hadolint ignore=DL3016
