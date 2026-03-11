@@ -1,4 +1,4 @@
-ARG VERSION=1.86.0
+ARG VERSION=1.94.0
 FROM nexus.gillouche.homelab/docker-hub/rust:${VERSION}-slim-trixie AS donor
 
 FROM nexus.gillouche.homelab/gcr-proxy/distroless/cc-debian13:nonroot
