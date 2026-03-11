@@ -72,23 +72,8 @@ def compute_levels(image_deps):
     return levels
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate GitHub Actions matrix for container builds")
-    parser.add_argument("--level", type=int, default=1,
-                        help="Build level to output (1 = no deps, 2+ = increasing dependency depth)")
-    parser.add_argument("--max-level", action="store_true",
-                        help="Print the maximum build level and exit")
-    args = parser.parse_args()
-
-    images_dir = "images"
-
-    if not os.path.exists(images_dir):
-        print(f"Error: {images_dir} not found", file=sys.stderr)
-        sys.exit(1)
-
-    internal_registry_prefix = "nexus.gillouche.homelab"
-
-    # Phase 1: Scan all images and their dependencies
+def scan_images(images_dir, internal_registry_prefix):
+    """Scan all images and return their dependencies and versions."""
     image_deps = {}
     image_versions = {}
 
@@ -118,7 +103,30 @@ def main():
                         versions.append(v)
         image_versions[image_name] = versions
 
-    # Phase 2: Compute levels
+    return image_deps, image_versions
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate GitHub Actions matrix for container builds")
+    parser.add_argument("--level", type=int, default=0,
+                        help="Build level to output (1 = no deps, 2+ = increasing dependency depth)")
+    parser.add_argument("--max-level", action="store_true",
+                        help="Print the maximum build level and exit")
+    parser.add_argument("--image", type=str, default="",
+                        help="Output matrix for a single image")
+    parser.add_argument("--graph", action="store_true",
+                        help="Output the full dependency graph as JSON")
+    args = parser.parse_args()
+
+    images_dir = "images"
+
+    if not os.path.exists(images_dir):
+        print(f"Error: {images_dir} not found", file=sys.stderr)
+        sys.exit(1)
+
+    internal_registry_prefix = "nexus.gillouche.homelab"
+
+    image_deps, image_versions = scan_images(images_dir, internal_registry_prefix)
     levels = compute_levels(image_deps)
     max_level = max(levels.values()) if levels else 0
 
@@ -126,21 +134,50 @@ def main():
         print(max_level)
         return
 
-    # Phase 3: Build matrix for the requested level
+    # --graph: output the full dependency graph for workflow generation
+    if args.graph:
+        graph = {}
+        for image_name in sorted(image_deps.keys()):
+            graph[image_name] = {
+                "deps": sorted(image_deps[image_name]),
+                "versions": image_versions.get(image_name, []),
+                "level": levels.get(image_name, 0),
+            }
+        print(json.dumps(graph, indent=2))
+        return
+
+    # --image: output matrix for a single image
+    if args.image:
+        versions = image_versions.get(args.image, [])
+        include = [{"image": args.image, "version": v} for v in versions]
+        print(json.dumps({"include": include}))
+        return
+
+    # --level: output matrix for a specific level (legacy mode)
+    if args.level > 0:
+        include = []
+        for image_name, level in sorted(levels.items()):
+            if level != args.level:
+                continue
+            for version in image_versions.get(image_name, []):
+                include.append({
+                    "image": image_name,
+                    "version": version
+                })
+
+        include.sort(key=lambda x: (x["image"], x["version"]))
+        print(json.dumps({"include": include}))
+        return
+
+    # Default: output all images
     include = []
-    for image_name, level in sorted(levels.items()):
-        if level != args.level:
-            continue
+    for image_name in sorted(image_deps.keys()):
         for version in image_versions.get(image_name, []):
             include.append({
                 "image": image_name,
                 "version": version
             })
-
-    # Sort for deterministic output
     include.sort(key=lambda x: (x["image"], x["version"]))
-
-    # Output JSON for GitHub Actions matrix
     print(json.dumps({"include": include}))
 
 

@@ -78,3 +78,6 @@ CVE-2026-26960
 
 # tar (node-tar) - Hardlink Path Traversal via Drive-Relative Linkpath
 CVE-2026-29786
+
+# tar (node-tar) - File overwrite via drive-relative symlink traversal
+CVE-2026-31802

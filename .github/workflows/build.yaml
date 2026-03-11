@@ -26,12 +26,16 @@ permissions:
 
 jobs:
   prepare:
-    name: Prepare Matrices
+    name: Prepare
     runs-on: container-factory-runner
     outputs:
-      matrix-l1: ${{ steps.set-matrix-l1.outputs.matrix }}
-      matrix-l2: ${{ steps.set-matrix-l2.outputs.matrix }}
-      matrix-l3: ${{ steps.set-matrix-l3.outputs.matrix }}
+      matrix-tls-bundle: ${{ steps.matrices.outputs.matrix-tls-bundle }}
+      matrix-go-distroless: ${{ steps.matrices.outputs.matrix-go-distroless }}
+      matrix-python-distroless: ${{ steps.matrices.outputs.matrix-python-distroless }}
+      matrix-rust-distroless: ${{ steps.matrices.outputs.matrix-rust-distroless }}
+      matrix-typescript-distroless: ${{ steps.matrices.outputs.matrix-typescript-distroless }}
+      matrix-actions-runner: ${{ steps.matrices.outputs.matrix-actions-runner }}
+      matrix-actions-runner-homelab-nix: ${{ steps.matrices.outputs.matrix-actions-runner-homelab-nix }}
       push: ${{ steps.set-push.outputs.push }}
     steps:
       - name: Checkout
@@ -71,26 +75,14 @@ jobs:
           echo "Pre-caching development environment..."
           nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http&profile=nix" .#devShells.x86_64-linux.default
 
-      - name: Generate Matrix Level 1
-        id: set-matrix-l1
+      - name: Generate Per-Image Matrices
+        id: matrices
         run: |
           { set +x; } 2>/dev/null
-          MATRIX=$(python3 ci/generate_matrix.py --level 1)
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-
-      - name: Generate Matrix Level 2
-        id: set-matrix-l2
-        run: |
-          { set +x; } 2>/dev/null
-          MATRIX=$(python3 ci/generate_matrix.py --level 2)
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-
-      - name: Generate Matrix Level 3
-        id: set-matrix-l3
-        run: |
-          { set +x; } 2>/dev/null
-          MATRIX=$(python3 ci/generate_matrix.py --level 3)
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          for image in $(ls images); do
+            MATRIX=$(python3 ci/generate_matrix.py --image "$image")
+            echo "matrix-$image=$MATRIX" >> "$GITHUB_OUTPUT"
+          done
 
       - name: Determine Push Policy
         id: set-push
@@ -102,13 +94,15 @@ jobs:
             echo "push=false" >> "$GITHUB_OUTPUT"
           fi
 
-  build-level-1:
-    name: Build L1
+  # ── L1: No internal dependencies (all run in parallel) ──────────────
+
+  build-tls-bundle:
+    name: tls-bundle
     needs: prepare
-    if: fromJson(needs.prepare.outputs.matrix-l1).include[0] != null
+    if: fromJson(needs.prepare.outputs.matrix-tls-bundle).include[0] != null
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.prepare.outputs.matrix-l1) }}
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix-tls-bundle) }}
     uses: ./.github/workflows/reusable-build.yaml
     with:
       image: ${{ matrix.image }}
@@ -116,16 +110,13 @@ jobs:
       push: ${{ needs.prepare.outputs.push == 'true' }}
     secrets: inherit
 
-  build-level-2:
-    name: Build L2
-    needs: [prepare, build-level-1]
-    if: |
-      always() &&
-      (needs.build-level-1.result == 'success' || needs.build-level-1.result == 'skipped') &&
-      fromJson(needs.prepare.outputs.matrix-l2).include[0] != null
+  build-go-distroless:
+    name: go-distroless
+    needs: prepare
+    if: fromJson(needs.prepare.outputs.matrix-go-distroless).include[0] != null
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.prepare.outputs.matrix-l2) }}
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix-go-distroless) }}
     uses: ./.github/workflows/reusable-build.yaml
     with:
       image: ${{ matrix.image }}
@@ -133,28 +124,102 @@ jobs:
       push: ${{ needs.prepare.outputs.push == 'true' }}
     secrets: inherit
 
-  build-level-3:
-    name: Build L3
-    needs: [prepare, build-level-2]
-    if: |
-      always() &&
-      (needs.build-level-2.result == 'success' || needs.build-level-2.result == 'skipped') &&
-      fromJson(needs.prepare.outputs.matrix-l3).include[0] != null
+  build-python-distroless:
+    name: python-distroless
+    needs: prepare
+    if: fromJson(needs.prepare.outputs.matrix-python-distroless).include[0] != null
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.prepare.outputs.matrix-l3) }}
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix-python-distroless) }}
     uses: ./.github/workflows/reusable-build.yaml
     with:
       image: ${{ matrix.image }}
       version: ${{ matrix.version }}
       push: ${{ needs.prepare.outputs.push == 'true' }}
     secrets: inherit
+
+  build-rust-distroless:
+    name: rust-distroless
+    needs: prepare
+    if: fromJson(needs.prepare.outputs.matrix-rust-distroless).include[0] != null
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix-rust-distroless) }}
+    uses: ./.github/workflows/reusable-build.yaml
+    with:
+      image: ${{ matrix.image }}
+      version: ${{ matrix.version }}
+      push: ${{ needs.prepare.outputs.push == 'true' }}
+    secrets: inherit
+
+  build-typescript-distroless:
+    name: typescript-distroless
+    needs: prepare
+    if: fromJson(needs.prepare.outputs.matrix-typescript-distroless).include[0] != null
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix-typescript-distroless) }}
+    uses: ./.github/workflows/reusable-build.yaml
+    with:
+      image: ${{ matrix.image }}
+      version: ${{ matrix.version }}
+      push: ${{ needs.prepare.outputs.push == 'true' }}
+    secrets: inherit
+
+  # ── L2: Depends on tls-bundle ───────────────────────────────────────
+
+  build-actions-runner:
+    name: actions-runner
+    needs: [prepare, build-tls-bundle]
+    if: |
+      always() &&
+      (needs.build-tls-bundle.result == 'success' || needs.build-tls-bundle.result == 'skipped') &&
+      fromJson(needs.prepare.outputs.matrix-actions-runner).include[0] != null
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix-actions-runner) }}
+    uses: ./.github/workflows/reusable-build.yaml
+    with:
+      image: ${{ matrix.image }}
+      version: ${{ matrix.version }}
+      push: ${{ needs.prepare.outputs.push == 'true' }}
+    secrets: inherit
+
+  # ── L3: Depends on tls-bundle + actions-runner ──────────────────────
+
+  build-actions-runner-homelab-nix:
+    name: actions-runner-homelab-nix
+    needs: [prepare, build-tls-bundle, build-actions-runner]
+    if: |
+      always() &&
+      (needs.build-tls-bundle.result == 'success' || needs.build-tls-bundle.result == 'skipped') &&
+      (needs.build-actions-runner.result == 'success' || needs.build-actions-runner.result == 'skipped') &&
+      fromJson(needs.prepare.outputs.matrix-actions-runner-homelab-nix).include[0] != null
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix-actions-runner-homelab-nix) }}
+    uses: ./.github/workflows/reusable-build.yaml
+    with:
+      image: ${{ matrix.image }}
+      version: ${{ matrix.version }}
+      push: ${{ needs.prepare.outputs.push == 'true' }}
+    secrets: inherit
+
+  # ── Notification ────────────────────────────────────────────────────
 
   notify-completion:
     name: Notify Completion
     runs-on: container-factory-runner
     if: always()
-    needs: [prepare, build-level-1, build-level-2, build-level-3]
+    needs:
+      - prepare
+      - build-tls-bundle
+      - build-go-distroless
+      - build-python-distroless
+      - build-rust-distroless
+      - build-typescript-distroless
+      - build-actions-runner
+      - build-actions-runner-homelab-nix
     steps:
       - name: Determine Status
         id: status
@@ -163,19 +228,22 @@ jobs:
           STATUS="success"
           MESSAGE="CI Pipeline Completed Successfully"
 
-          if [[ "${{ needs.prepare.result }}" == "failure" || "${{ needs.prepare.result }}" == "cancelled" ]]; then
-            STATUS="failure"
-            MESSAGE="CI Pipeline Failed (Prepare)"
-          elif [[ "${{ needs.build-level-1.result }}" == "failure" || "${{ needs.build-level-1.result }}" == "cancelled" ]]; then
-            STATUS="failure"
-            MESSAGE="CI Pipeline Failed (Level 1)"
-          elif [[ "${{ needs.build-level-2.result }}" == "failure" || "${{ needs.build-level-2.result }}" == "cancelled" ]]; then
-            STATUS="failure"
-            MESSAGE="CI Pipeline Failed (Level 2)"
-          elif [[ "${{ needs.build-level-3.result }}" == "failure" || "${{ needs.build-level-3.result }}" == "cancelled" ]]; then
-            STATUS="failure"
-            MESSAGE="CI Pipeline Failed (Level 3)"
-          fi
+          RESULTS=("${{ needs.prepare.result }}" \
+                   "${{ needs.build-tls-bundle.result }}" \
+                   "${{ needs.build-go-distroless.result }}" \
+                   "${{ needs.build-python-distroless.result }}" \
+                   "${{ needs.build-rust-distroless.result }}" \
+                   "${{ needs.build-typescript-distroless.result }}" \
+                   "${{ needs.build-actions-runner.result }}" \
+                   "${{ needs.build-actions-runner-homelab-nix.result }}")
+
+          for result in "${RESULTS[@]}"; do
+            if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+              STATUS="failure"
+              MESSAGE="CI Pipeline Failed"
+              break
+            fi
+          done
 
           echo "status=$STATUS" >> $GITHUB_OUTPUT
           echo "message=$MESSAGE" >> $GITHUB_OUTPUT
