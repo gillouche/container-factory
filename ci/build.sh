@@ -170,7 +170,7 @@ for VERSION in $VARIANTS; do
     if [ "$PUSH_IMAGES" = "true" ] && [ "$PUSH_NECESSARY" = "true" ]; then
         BUILD_CMD+=(--platform "$PLATFORMS")
         BUILD_CMD+=(--push)
-        BUILD_CMD+=(--sbom=true)
+        BUILD_CMD+=(--sbom=generator="$REGISTRY/docker-hub/docker/buildkit-syft-scanner:stable-1")
         BUILD_CMD+=(--provenance=true)
         BUILD_CMD+=(--cache-from "type=registry,ref=$CACHE_IMAGE:$VERSION")
         BUILD_CMD+=(--cache-to "type=registry,ref=$CACHE_IMAGE:$VERSION,mode=max")
