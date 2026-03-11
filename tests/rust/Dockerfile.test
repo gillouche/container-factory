@@ -1,7 +1,8 @@
 ARG BASE_IMAGE
-FROM ${BASE_IMAGE} AS builder
+ARG VERSION
+FROM nexus.gillouche.homelab/docker-hub/rust:${VERSION}-slim-trixie AS builder
 COPY hello.rs /tmp/hello.rs
-RUN ["/usr/local/cargo/bin/rustc", "/tmp/hello.rs", "-o", "/tmp/hello"]
+RUN rustc /tmp/hello.rs -o /tmp/hello
 
 FROM ${BASE_IMAGE}
 COPY --from=builder /tmp/hello /tmp/hello

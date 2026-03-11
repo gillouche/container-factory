@@ -43,6 +43,7 @@ docker buildx build \
     --load \
     --platform linux/amd64 \
     --build-arg BASE_IMAGE="$LOCAL_TAG" \
+    --build-arg VERSION="$EXPECTED_VERSION" \
     --tag "$TEST_TAG" \
     --file tests/rust/Dockerfile.test \
     tests/rust
