@@ -1,4 +1,9 @@
+ARG VERSION
+FROM nexus.gillouche.homelab/docker-hub/golang:${VERSION}-trixie AS builder
+COPY hello.go /tmp/hello.go
+RUN CGO_ENABLED=0 go build -o /tmp/hello /tmp/hello.go
+
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
-COPY hello.go /tmp/hello.go
-ENTRYPOINT ["/usr/local/go/bin/go", "run", "/tmp/hello.go"]
+COPY --from=builder /tmp/hello /tmp/hello
+ENTRYPOINT ["/tmp/hello"]

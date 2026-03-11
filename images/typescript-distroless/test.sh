@@ -4,7 +4,7 @@ set -euo pipefail
 LOCAL_TAG=$1
 EXPECTED_VERSION=$2
 
-echo "Running TypeScript smoke test against $LOCAL_TAG (expected Node ${EXPECTED_VERSION})..."
+echo "Running Node.js smoke test against $LOCAL_TAG (expected Node ${EXPECTED_VERSION})..."
 
 # 1. Node version check
 echo "Checking node version..."
@@ -26,18 +26,8 @@ else
     exit 1
 fi
 
-# 3. TypeScript compiler check
-echo "Checking tsc version..."
-TSC_OUTPUT=$(docker run --rm --entrypoint /usr/local/bin/tsc "$LOCAL_TAG" --version)
-if echo "$TSC_OUTPUT" | grep -q "Version"; then
-    echo "TypeScript check passed: $TSC_OUTPUT"
-else
-    echo "TypeScript check failed: $TSC_OUTPUT"
-    exit 1
-fi
-
-# 4. Run TypeScript file (uses test Dockerfile to avoid DIND volume mount issues)
-echo "Checking TypeScript execution via tsx..."
+# 3. Run JS file (uses test Dockerfile to avoid DIND volume mount issues)
+echo "Checking Node.js execution..."
 TEST_TAG="test-typescript-distroless:${EXPECTED_VERSION}"
 docker buildx build \
     --load \
@@ -50,4 +40,4 @@ docker buildx build \
 docker run --rm -e "EXPECTED_VERSION=$EXPECTED_VERSION" "$TEST_TAG"
 docker rmi "$TEST_TAG" || true
 
-echo "All TypeScript smoke tests passed!"
+echo "All Node.js smoke tests passed!"

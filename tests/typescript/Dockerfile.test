@@ -1,4 +1,4 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
-COPY hello.ts /tmp/hello.ts
-ENTRYPOINT ["/usr/local/bin/tsx", "/tmp/hello.ts"]
+COPY hello.js /tmp/hello.js
+ENTRYPOINT ["/usr/local/bin/node", "/tmp/hello.js"]

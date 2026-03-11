@@ -1,17 +1,18 @@
-import * as os from "os";
-import * as process from "process";
+"use strict";
+
+const process = require("process");
 
 // Verify non-root execution
-const uid: number = process.getuid?.() ?? -1;
+const uid = process.getuid();
 if (uid === 0) {
   console.error(`Container must not run as root (got uid=${uid})`);
   process.exit(1);
 }
 
 // Verify Node version matches expected (if provided via env)
-const expected: string | undefined = process.env.EXPECTED_VERSION;
+const expected = process.env.EXPECTED_VERSION;
 if (expected) {
-  const actual: string = process.version.replace(/^v/, "");
+  const actual = process.version.replace(/^v/, "");
   if (actual !== expected) {
     console.error(`Version mismatch: expected ${expected}, got ${actual}`);
     process.exit(1);
