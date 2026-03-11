@@ -10,6 +10,8 @@ FROM nexus.gillouche.homelab/gcr-proxy/distroless/cc-debian13:nonroot
 ARG VERSION
 
 COPY --link --from=donor /usr/local /usr/local
+# Node.js requires libatomic which is not included in distroless/cc
+COPY --link --from=donor /usr/lib/*-linux-gnu/libatomic.so.* /usr/lib/
 
 USER nonroot
 
