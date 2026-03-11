@@ -13,5 +13,15 @@
         "source": "github_release",
         "repo": "actions/runner",
         "prefix": "v"
+    },
+    "images/rust-distroless/VARIANTS": {
+        "source": "docker_hub",
+        "image": "library/rust",
+        "tag_template": "{version}-slim-trixie"
+    },
+    "images/typescript-distroless/VARIANTS": {
+        "source": "docker_hub",
+        "image": "library/node",
+        "tag_template": "{version}-slim-trixie"
     }
 }

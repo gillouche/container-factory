@@ -1,0 +1,8 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE} AS builder
+COPY hello.rs /tmp/hello.rs
+RUN ["/usr/local/cargo/bin/rustc", "/tmp/hello.rs", "-o", "/tmp/hello"]
+
+FROM ${BASE_IMAGE}
+COPY --from=builder /tmp/hello /tmp/hello
+ENTRYPOINT ["/tmp/hello"]
