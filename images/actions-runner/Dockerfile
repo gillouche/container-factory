@@ -8,6 +8,7 @@ ARG RUNNER_CONTAINER_HOOKS_VERSION=0.8.1
 ARG RUNNER_CONTAINER_HOOKS_NOVOLUME_VERSION=0.8.1
 ARG DOCKER_VERSION=29.2.0
 ARG BUILDX_VERSION=0.31.1
+ARG COMPOSE_VERSION=5.1.0
 ARG DOWNLOAD_PROXY=nexus.gillouche.homelab/repository
 
 USER root
@@ -42,7 +43,10 @@ RUN DOCKER_ARCH="${TARGETARCH}" \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-buildx \
     "https://${DOWNLOAD_PROXY}/github-releases/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
-    && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+    && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx \
+    && curl -fLo /usr/local/lib/docker/cli-plugins/docker-compose \
+    "https://${DOWNLOAD_PROXY}/github-releases/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${TARGETARCH}" \
+    && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
 FROM nexus.gillouche.homelab/cgr-proxy/chainguard/wolfi-base:latest
 
@@ -91,6 +95,7 @@ WORKDIR /home/runner
 
 COPY --chown=runner:docker --from=build /actions-runner .
 COPY --from=build /usr/local/lib/docker/cli-plugins/docker-buildx /usr/local/lib/docker/cli-plugins/docker-buildx
+COPY --from=build /usr/local/lib/docker/cli-plugins/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
 
 RUN install -o root -g root -m 755 docker/* /usr/bin/ && rm -rf docker
 
