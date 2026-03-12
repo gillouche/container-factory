@@ -60,24 +60,33 @@ fi
 echo "PASS: k8s container hooks present"
 
 echo ""
-echo "[6/9] Verifying Docker and Buildx..."
+echo "[6/10] Verifying Docker and Buildx..."
 DOCKER_VER=$(run_cmd "docker --version")
 BUILDX_VER=$(run_cmd "docker buildx version" 2>/dev/null || echo "not found")
 echo "PASS: Docker ($DOCKER_VER)"
 echo "PASS: Buildx ($BUILDX_VER)"
 
 echo ""
-echo "[7/9] Verifying Node.js..."
+echo "[7/10] Verifying Docker Compose..."
+COMPOSE_VER=$(run_cmd "docker compose version" 2>/dev/null || echo "not found")
+if [[ "$COMPOSE_VER" == "not found" ]]; then
+    echo "FAIL: Docker Compose plugin not found"
+    exit 1
+fi
+echo "PASS: Docker Compose ($COMPOSE_VER)"
+
+echo ""
+echo "[8/10] Verifying Node.js..."
 NODE_VER=$(run_cmd "node --version")
 echo "PASS: Node.js ($NODE_VER)"
 
 echo ""
-echo "[8/9] Verifying Python..."
+echo "[9/10] Verifying Python..."
 PYTHON_VER=$(run_cmd "python3 --version")
 echo "PASS: Python ($PYTHON_VER)"
 
 echo ""
-echo "[9/9] Verifying .NET SDK..."
+echo "[10/10] Verifying .NET SDK..."
 DOTNET_VER=$(run_cmd "dotnet --version")
 echo "PASS: .NET SDK ($DOTNET_VER)"
 
