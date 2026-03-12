@@ -45,7 +45,7 @@ RUN DOCKER_ARCH="${TARGETARCH}" \
     "https://${DOWNLOAD_PROXY}/github-releases/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-${TARGETARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx \
     && curl -fLo /usr/local/lib/docker/cli-plugins/docker-compose \
-    "https://${DOWNLOAD_PROXY}/github-releases/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${TARGETARCH}" \
+    "https://${DOWNLOAD_PROXY}/github-releases/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${DOCKER_ARCH}" \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
 FROM nexus.gillouche.homelab/cgr-proxy/chainguard/wolfi-base:latest
