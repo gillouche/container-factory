@@ -14,9 +14,6 @@ CVE-2026-23745
 CVE-2026-23950
 CVE-2026-24842
 
-# brace-expansion - Pattern matching library
-CVE-2026-25547
-
 # cross-spawn - Cross-platform spawn utility
 CVE-2024-21538
 
@@ -61,4 +58,10 @@ CVE-2025-68121
 
 # go.opentelemetry.io/otel/sdk - Arbitrary code execution via PATH hijacking (fixed in v1.40.0)
 CVE-2026-24051
+
+# google.golang.org/grpc - Authorization bypass via missing leading slash in :path
+CVE-2026-33186
+
+# net/url - Incorrect parsing of IPv6 host literals
+CVE-2026-25679
 
