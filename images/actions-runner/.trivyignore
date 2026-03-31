@@ -65,3 +65,15 @@ CVE-2026-33186
 # net/url - Incorrect parsing of IPv6 host literals
 CVE-2026-25679
 
+# picomatch - ReDoS via crafted extglob patterns
+CVE-2026-33671
+
+# github.com/moby/buildkit - Arbitrary file write and code execution via untrusted frontend
+CVE-2026-33747
+
+# github.com/moby/buildkit - Git URL subdir component can cause access to restricted files
+CVE-2026-33748
+
+# github.com/docker/docker - AuthZ plugin bypass when provided oversized request bodies
+CVE-2026-34040
+
