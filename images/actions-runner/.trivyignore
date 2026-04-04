@@ -77,3 +77,6 @@ CVE-2026-33748
 # github.com/docker/docker - AuthZ plugin bypass when provided oversized request bodies
 CVE-2026-34040
 
+# github.com/go-jose/go-jose/v4 - Panics in JWE decryption
+CVE-2026-34986
+
