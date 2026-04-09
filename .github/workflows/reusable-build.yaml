@@ -78,7 +78,7 @@ jobs:
         run: docker rmi "${{ steps.build.outputs.scan_image }}" 2>/dev/null || true
 
       - name: Push Notification
-        if: steps.build.outputs.pushed == 'true'
+        if: steps.build.outputs.pushed == 'true' && success()
         uses: gillouche/homelab-ci/actions/push-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}

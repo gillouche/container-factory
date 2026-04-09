@@ -80,3 +80,6 @@ CVE-2026-34040
 # github.com/go-jose/go-jose/v4 - Panics in JWE decryption
 CVE-2026-34986
 
+# go.opentelemetry.io/otel/sdk - BSD kenv command not using absolute path enables PATH hijacking
+CVE-2026-39883
+
