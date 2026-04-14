@@ -99,11 +99,13 @@ for VERSION in $VARIANTS; do
     # Build local image for verification
     LOCAL_TAG="local-scan-$IMAGE_NAME:$VERSION"
     
-    # We must build a single arch to load it into the local daemon
+    # Build single arch for local verification, update registry cache so the
+    # multi-arch push build reuses these layers instead of rebuilding amd64.
     docker buildx build \
         --load \
         --platform linux/amd64 \
         --cache-from "type=registry,ref=$CACHE_IMAGE:$VERSION" \
+        --cache-to "type=registry,ref=$CACHE_IMAGE:$VERSION-amd64,mode=max" \
         --build-arg VERSION="$VERSION" \
         --build-arg SOURCE_DATE_EPOCH="$GIT_DATE" \
         --tag "$LOCAL_TAG" \
@@ -168,18 +170,33 @@ for VERSION in $VARIANTS; do
     BUILD_CMD+=(--file "images/$IMAGE_NAME/Dockerfile")
 
     if [ "$PUSH_IMAGES" = "true" ] && [ "$PUSH_NECESSARY" = "true" ]; then
-        BUILD_CMD+=(--platform "$PLATFORMS")
-        BUILD_CMD+=(--push)
-        BUILD_CMD+=(--sbom=generator="$REGISTRY/docker-hub/docker/buildkit-syft-scanner:stable-1")
-        BUILD_CMD+=(--provenance=true)
-        BUILD_CMD+=(--cache-from "type=registry,ref=$CACHE_IMAGE:$VERSION")
-        BUILD_CMD+=(--cache-to "type=registry,ref=$CACHE_IMAGE:$VERSION,mode=max")
-        
-        # Execute Build & Push
-        "${BUILD_CMD[@]}" "images/$IMAGE_NAME"
+        IS_SINGLE_ARCH="false"
+        if [ "$PLATFORMS" = "linux/amd64" ]; then
+            IS_SINGLE_ARCH="true"
+        fi
+
+        if [ "$IS_SINGLE_ARCH" = "true" ]; then
+            echo "Single-arch image: reusing local build, tagging and pushing directly"
+            docker tag "$LOCAL_TAG" "$FULL_IMAGE:$VERSION"
+            docker push "$FULL_IMAGE:$VERSION"
+            if [ "$VERSION" = "$LATEST_VERSION" ]; then
+                docker tag "$LOCAL_TAG" "$FULL_IMAGE:latest"
+                docker push "$FULL_IMAGE:latest"
+            fi
+        else
+            BUILD_CMD+=(--platform "$PLATFORMS")
+            BUILD_CMD+=(--push)
+            BUILD_CMD+=(--sbom=generator="$REGISTRY/docker-hub/docker/buildkit-syft-scanner:stable-1")
+            BUILD_CMD+=(--provenance=true)
+            BUILD_CMD+=(--cache-from "type=registry,ref=$CACHE_IMAGE:$VERSION-amd64")
+            BUILD_CMD+=(--cache-from "type=registry,ref=$CACHE_IMAGE:$VERSION")
+            BUILD_CMD+=(--cache-to "type=registry,ref=$CACHE_IMAGE:$VERSION,mode=max")
+
+            "${BUILD_CMD[@]}" "images/$IMAGE_NAME"
+        fi
 
         echo "Pushed $FULL_IMAGE:$VERSION"
-        
+
         if command -v crane &> /dev/null; then
             DIGEST=$(crane digest "$FULL_IMAGE:$VERSION")
         else
