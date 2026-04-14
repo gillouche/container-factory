@@ -108,6 +108,7 @@ jobs:
       image: ${{ matrix.image }}
       version: ${{ matrix.version }}
       push: ${{ needs.prepare.outputs.push == 'true' }}
+      runs-on: container-factory-prio-runner
     secrets: inherit
 
   build-go-distroless:
