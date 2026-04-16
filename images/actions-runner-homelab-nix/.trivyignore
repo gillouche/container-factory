@@ -64,6 +64,9 @@ CVE-2025-11695  # mongodb (Certificate validation bypass)
 # quinn-proto - Denial of Service via crafted QUIC Initial packet (Nix installer bundled)
 CVE-2026-31812
 
+# thin-vec - Use-After-Free and Double Free in IntoIter::drop When Element Drop Panics (Nix installer bundled)
+GHSA-xphw-cqx3-667j
+
 # -----------------
 # Actions Runner Bundled Node.js Dependencies (actions/runner v2.331.0)
 # -----------------
