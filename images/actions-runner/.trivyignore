@@ -86,6 +86,4 @@ CVE-2026-39883
 # golang stdlib - Chain building work not correctly limited
 CVE-2026-32280
 
-# golang stdlib - Root.Chmod can follow symlinks out of the root
-CVE-2026-32282
 
