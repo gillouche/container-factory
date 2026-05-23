@@ -64,8 +64,23 @@ CVE-2025-11695  # mongodb (Certificate validation bypass)
 # quinn-proto - Denial of Service via crafted QUIC Initial packet (Nix installer bundled)
 CVE-2026-31812
 
-# thin-vec - Use-After-Free and Double Free in IntoIter::drop When Element Drop Panics (Nix installer bundled)
-GHSA-xphw-cqx3-667j
+# thin-vec - Memory corruption via Double-Free/Use-After-Free (Nix installer bundled)
+CVE-2026-6654
+
+# rustls-webpki - Denial of service via panic on malformed CRL BIT STRING (Nix installer bundled)
+GHSA-82j2-j2ch-gfr8
+
+# rust-openssl - OpenSSL bindings for Rust (Nix installer bundled)
+CVE-2026-41676
+CVE-2026-41678
+CVE-2026-41681
+CVE-2026-41898
+
+# rust-openssl - Arbitrary code execution via specially crafted certificate (Nix installer bundled)
+CVE-2026-42327
+
+# rmcp - Streamable HTTP server transport DNS rebinding vulnerability (Nix installer bundled)
+CVE-2026-42559
 
 # -----------------
 # Actions Runner Bundled Node.js Dependencies (actions/runner v2.331.0)
