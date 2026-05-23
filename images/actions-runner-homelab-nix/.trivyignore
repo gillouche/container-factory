@@ -111,3 +111,33 @@ CVE-2026-39883
 
 # golang stdlib - Chain building work not correctly limited
 CVE-2026-32280
+
+# github.com/containerd/containerd/v2 - User ID handling bypass allows runAsNonRoot evasion
+CVE-2026-46680
+
+# github.com/moby/spdystream - DoS via SPDY streaming code (Kubelet/CRI-O/kube-apiserver)
+CVE-2026-35469
+
+# go.opentelemetry.io/otel - Affects azurelinux-image-tools < 1.3.0-1
+CVE-2026-29181
+
+# golang stdlib crypto/x509 - DoS via inefficient certificate chain validation
+CVE-2026-32281
+
+# golang stdlib crypto/tls - DoS via multiple TLS 1.3 key update messages
+CVE-2026-32283
+
+# golang stdlib - LookupCNAME with cgo DNS resolver: very long CNAME response handling
+CVE-2026-33811
+
+# golang stdlib - HTTP/2 SETTINGS frames cause transport infinite loop
+CVE-2026-33814
+
+# golang stdlib - Panic in ParseAddress/ParseAddressList on crafted inputs
+CVE-2026-39820
+
+# golang stdlib - Panic in Dial and LookupPort when handling NUL byte on Windows in net
+CVE-2026-39836
+
+# golang stdlib - Pathological inputs cause DoS in consumePhrase when parsing
+CVE-2026-42499
